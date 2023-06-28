@@ -1,0 +1,14 @@
+jupyter
+numpy
+opencv-python
+torch
+torchvision
+open-clip-torch
+transformers
+matplotlib
+pandas
+pytorch-lightning
+lightning[extra]
+tensorboard-pytorch
+tensorboard
+imgaug
