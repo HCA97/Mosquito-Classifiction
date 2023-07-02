@@ -1,13 +1,11 @@
 
-from typing import Any, Iterator
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 import torch as th
 from torch import nn
 import pytorch_lightning as pl
-from torch.nn.parameter import Parameter
-from torchvision.models import resnet50, ResNet50_Weights
-import open_clip
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
+from .loc_models import LocalizationResNet50, LocalizationCLIP
 
 def iou_loss(y1, y2):
     # B, 4
@@ -29,92 +27,101 @@ def iou_loss(y1, y2):
 def mse_loss(y1, y2):
     return nn.functional.mse_loss(y1, y2)
 
-class LocalizationResNet50(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
 
-        self.backbone = nn.Sequential(
-            *list(resnet50(weights=ResNet50_Weights.IMAGENET1K_V1).children())[:-1]
-        )
+def accuracy(y1: th.Tensor, y2: th.Tensor):
+    y1_argmax = y1.argmax(dim=1)
+    y2_argmax = y2.argmax(dim=1)
 
-        self.mlp = nn.Sequential(
-            nn.Linear(2048, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, 4, bias=False),
-            nn.ReLU()
-        )
+    correct_sum = th.sum(y1_argmax == y2_argmax)
+    return correct_sum / len(y1)
 
-    def forward(self, x: th.tensor) -> th.tensor:        
-        x = self.backbone(x)
-        x = th.squeeze(x)
-        return self.mlp(x)
-        
-class LocalizationCLIP(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.backbone = open_clip.create_model_and_transforms('ViT-L-14', pretrained='datacomp_xl_s13b_b90k')[0].visual
-        self.mlp = nn.Sequential(
-            nn.Linear(768, 768),
-            nn.ReLU(),
-            nn.Linear(768, 4, bias=False),
-            nn.ReLU()
-        )
-    def forward(self, x: th.tensor) -> th.tensor:        
-        x = self.backbone(x)
-        x = th.squeeze(x)
-        return self.mlp(x)
 
 class MosquitoLocalization(pl.LightningModule):
-    def __init__(self, net_params: dict ={}, opt_params: dict={"lr": 1e-4}):
+    def __init__(self, net_name = 'resnet50', net_params: dict ={}, freeze_backbones: bool =True):
         super().__init__()
+        self.save_hyperparameters()
 
-        self.detector = LocalizationCLIP(**net_params)
+
+        if net_name == 'resnet50':
+            self.detector = LocalizationResNet50(**net_params)          
+        else:
+            self.detector = LocalizationCLIP(**net_params)
+
+        if freeze_backbones:
+            self.freeze_back_bone()
 
         self.net_params = net_params
-        self.opt_params = opt_params
 
+        self.scheduler = None
+        self.first_train_batch: th.Tensor = None
+        self.first_val_batch: th.Tensor = None
 
-    def forward(self, x: th.tensor) -> th.tensor:
+    def freeze_back_bone(self):
+        for param in self.detector.backbone.parameters():
+            param.requires_grad = False
+
+    def forward(self, x: th.Tensor) -> tuple:
         return self.detector(x)
     
+    def lr_schedulers(self):
+        # over-write this shit
+        return self.scheduler
+    
     def configure_optimizers(self):
-        parameters_backbone = [
-            # {'params': p, "lr": self.opt_params.get("lr", 1e-4) * 0, "weight_decay": self.opt_params.get("weight_decay", 1e-6) * 10}
-            # for _, p in self.detector.backbone.named_parameters()
-        ]
-        parameters_mlp = [
-            {'params': p, "lr": self.opt_params.get("lr", 1e-4), "weight_decay": self.opt_params.get("weight_decay", 1e-6)}
-            for _, p in self.detector.mlp.named_parameters()
-        ]
-        optimizer = th.optim.Adam(parameters_mlp + parameters_backbone)
+        optimizer = th.optim.AdamW(self.detector.get_learnable_params())
+        self.scheduler = ReduceLROnPlateau(optimizer, 'min', patience=2, factor=0.1, verbose=True)
         return optimizer
 
     def training_step(self, train_batch, batch_idx) -> STEP_OUTPUT:
-        x, y = train_batch["img"], train_batch["bbox_norm"]
+        img, bbox_t, label_t = train_batch["img"], train_batch["bbox_norm"], train_batch['label']
 
-        y_p = self.detector(x)
-        loss = mse_loss(y, y_p)
-        with th.no_grad():
-            iou = iou_loss(y, y_p)
+        if self.first_train_batch is None:
+            self.first_train_batch = th.clone(img.detach())
+
+        bbox_p, label_p = self.detector(img)
+        bbox_loss = mse_loss(bbox_t, bbox_p)
+        bbox_iou = iou_loss(bbox_t, bbox_p)
+        label_loss = nn.CrossEntropyLoss()(label_p, label_t)
 
         self.log_dict({
-            "train_loss": loss, 
-            "train_iou_loss": th.mean(iou),
-            "train_iou_0.75": th.sum(iou >= 0.75) / len(iou)
+            "train_loss": bbox_loss + label_loss, 
+            "train_iou_loss": th.mean(bbox_iou),
+            "train_iou_0.75": th.sum(bbox_iou >= 0.75) / len(bbox_iou),
+            "train_accuracy": accuracy(label_t, label_p),
+            "train_label_loss": label_loss,
+            "train_bbox_loss": bbox_loss
         })
         
-        return loss
+        return bbox_loss + label_loss
 
     def validation_step(self, val_batch, batch_idx):
-        x, y = val_batch["img"], val_batch["bbox_norm"]
-        y_p = self.detector(x)
-        loss = mse_loss(y, y_p)
-        iou = iou_loss(y, y_p)
+        img, bbox_t, label_t = val_batch["img"], val_batch["bbox_norm"], val_batch['label']
+
+        if self.first_val_batch is None:
+            self.first_val_batch = th.clone(img.detach())
+
+        bbox_p, label_p = self.detector(img)
+        bbox_loss = mse_loss(bbox_t, bbox_p)
+        bbox_iou = iou_loss(bbox_t, bbox_p)
+        label_loss = nn.CrossEntropyLoss()(label_p, label_t)
+
         self.log_dict({
-            "val_loss": loss, 
-            "val_iou_loss": th.mean(iou),
-            "val_iou_0.75": th.sum(iou >= 0.75) / len(iou)
+            "val_loss": bbox_loss + label_loss, 
+            "val_iou_loss": th.mean(bbox_iou),
+            "val_iou_0.75": th.sum(bbox_iou >= 0.75) / len(bbox_iou),
+            "val_accuracy": accuracy(label_t, label_p),
+            "val_label_loss": label_loss,
+            'val_bbox_loss': bbox_loss
         })
+
+    def on_epoch_end(self):
+        if self.scheduler is not None:
+            metrics = self.trainer.callback_metrics
+            val_loss = metrics.get('val_loss')
+            self.scheduler.step(val_loss)
+            
+        opt = self.optimizers(use_pl_optimizer=True)
+        self.log("lr", opt.param_groups[0]["lr"])
 
 
 if __name__ == "__main__":
@@ -129,12 +136,16 @@ if __name__ == "__main__":
 
         print(actual1, actual2, expected)   
 
+    def test_accuracy():
+        y1 = th.tensor([[1, 0, 0, 0],
+                        [0, 1, 0, 0],
+                        [0, 1, 0, 0],
+                        [0, 0, 1, 0]])
+        
+        y2 = th.tensor([[0, 0, 0, 1],
+                        [0, 2, 0, 0],
+                        [0, 2, 0, 0],
+                        [1, 0, 0, 0]])
 
-    def test_model():
-        model = LocalizationNet()
 
-        x = th.rand([10, 3, 224, 224])
-
-        print(model(x))
-
-    
+        print(accuracy(y1, y2), 0.5)
