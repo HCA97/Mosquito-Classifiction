@@ -1,0 +1,11 @@
+names:
+  0: albopictus
+  1: culex
+  2: japonicus/koreicus
+  3: culiseta
+  4: anopheles
+  5: aegypti
+path: /home/cemmi/Documents/aicrowd-mos/data_yolo
+test: 
+train: images/train
+val: images/val
