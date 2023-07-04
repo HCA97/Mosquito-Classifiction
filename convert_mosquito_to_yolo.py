@@ -26,8 +26,8 @@ def convert_2_yolo_boxxes(img_shape: tuple, bbox: tuple) -> tuple:
     img_w, img_h = img_shape
     x_tl, y_tl, x_br, y_br = bbox
 
-    box_w = (x_br - x_tl) / 2
-    box_h = (y_br - y_tl) / 2
+    box_w = x_br - x_tl
+    box_h = y_br - y_tl
 
     x_c = (x_tl + x_br) / 2
     y_c = (y_tl + y_br) / 2
