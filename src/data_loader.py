@@ -2,7 +2,6 @@ import os
 import logging
 from typing import Optional
 
-from tqdm import tqdm
 import torch as th
 from torch.utils.data import Dataset
 import pandas as pd
@@ -65,7 +64,8 @@ class SimpleDetectionDataset(Dataset):
         if self.transform:
             img = self.transform(img)
 
-        label = self.class_dict[label]
+        if self.class_dict:
+            label = self.class_dict[label]
         return {
             "img": img, 
             "bbox_norm": th.tensor(bbox_norm, dtype=th.float32),

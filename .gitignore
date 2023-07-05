@@ -1,4 +1,6 @@
 lightning_logs
+runs
+*.pt
 
 
 # Byte-compiled / optimized / DLL files

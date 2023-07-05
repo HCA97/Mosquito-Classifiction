@@ -13,3 +13,4 @@ tensorboard-pytorch
 tensorboard
 ultralytics
 albumentations
+faiss-cpu
