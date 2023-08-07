@@ -5,7 +5,7 @@ import pandas as pd
 from ultralytics import YOLO
 import torch as th
 
-yolo_model = 'runs/detect/train_m/weights/best.pt'
+yolo_model = 'runs/detect/train/weights/best.pt'
 test_dir = '../data/test'
 
 test_df = pd.read_csv('../data/test_phase1_v2.csv')
@@ -66,7 +66,7 @@ with th.no_grad():
         })
         
 
-with open('submissions_yolo_m.csv', 'w') as f:
+with open('submissions_yolo_s.csv', 'w') as f:
     writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
     writer.writeheader()
     writer.writerows(rows)

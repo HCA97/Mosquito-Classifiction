@@ -1,0 +1,4 @@
+path: /home/cemmi/Documents/aicrowd-mos/data_funit
+test: 
+train: train
+val: val
