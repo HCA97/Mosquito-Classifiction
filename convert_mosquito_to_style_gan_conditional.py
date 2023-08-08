@@ -1,5 +1,5 @@
 import os
-from multiprocessing import Pool
+import json
 
 import cv2
 import pandas as pd
@@ -11,7 +11,14 @@ annotation_csv = '../data/train.csv'
 
 
 output_dir = '../data_style_gan_conditional'
-
+labels = [
+    "albopictus",
+    "culex",
+    "japonicus-koreicus",
+    "culiseta",
+    "anopheles",
+    "aegypti",
+]
 
 def create_folders(output_dir: str):
     os.makedirs(output_dir, exist_ok=True)
@@ -44,13 +51,24 @@ def create_style_gan_folder(df: pd.DataFrame, folder_name: str) -> list:
 
     for i in tqdm(range(len(df))):
         f_name, _, _, x_tl, y_tl, x_br, y_br, class_label = df.iloc[i]
-        _loop(f_name, class_label, (x_tl, y_tl, x_br, y_br))
+        _loop(f_name, class_label.replace('/', '-'), (x_tl, y_tl, x_br, y_br))
 
 def create_dataset_json(folder_name: str):
     _path = os.path.join(output_dir, folder_name)
 
+    dataset = {"labels": []}
     for root, dirs, files in os.walk(_path):
-        print(root, dirs)
+        if dirs:
+            continue
+        
+        _dir = os.path.split(root)[-1]
+        label_idx = labels.index(_dir)
+        
+        for file in files:
+            dataset['labels'].append([os.path.join(_dir, file), label_idx])
+
+    with open(os.path.join(_path, "dataset.json"), 'w', encoding='utf-8') as f:
+        json.dump(dataset, f, indent=4)
 
 if __name__ == '__main__':
     df = pd.read_csv(annotation_csv)
@@ -62,6 +80,6 @@ if __name__ == '__main__':
 
     create_style_gan_folder(train_df, 'train')
     create_dataset_json('train')
-    create_style_gan_folder(val_df, 'val')
+    # create_style_gan_folder(val_df, 'val')
         
         
