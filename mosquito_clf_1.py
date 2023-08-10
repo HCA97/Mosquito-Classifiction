@@ -111,32 +111,35 @@ def train(
     )
 
 
-params = []
-for data_aug in ["image_net", "happy_whale", "hca"]:
-    for fb in [False]:
-        for warm_up_steps in [1000, 1500]:
-            for head_version in [2]:
-                for model in [
-                    ["ViT-B-16", "datacomp_l_s1b_b8k", 64],
-                    ["ViT-L-14", "datacomp_xl_s13b_b90k", 64],
-                ]:
-                    param = model + [head_version, data_aug, fb, warm_up_steps]
-                    params.append(param)
+# params = []
+# for data_aug in ["image_net", "happy_whale", "hca"]:
+#     for fb in [False]:
+#         for warm_up_steps in [1000, 1500]:
+#             for head_version in [2]:
+#                 for model in [
+#                     ["ViT-B-16", "datacomp_l_s1b_b8k", 64],
+#                     ["ViT-L-14", "datacomp_xl_s13b_b90k", 64],
+#                 ]:
+#                     param = model + [head_version, data_aug, fb, warm_up_steps]
+#                     params.append(param)
 
-for data_aug in ["image_net", "happy_whale", "hca"]:
-    for fb in [True]:
-        for warm_up_steps in [100, 0]:
-            for head_version in [2]:
-                for model in [
-                    ["ViT-B-16", "datacomp_l_s1b_b8k", 64],
-                    ["ViT-L-14", "datacomp_xl_s13b_b90k", 64],
-                ]:
-                    param = model + [head_version, data_aug, fb, warm_up_steps]
-                    params.append(param)
+# for data_aug in ["image_net", "happy_whale", "hca"]:
+#     for fb in [True]:
+#         for warm_up_steps in [100, 0]:
+#             for head_version in [2]:
+#                 for model in [
+#                     ["ViT-B-16", "datacomp_l_s1b_b8k", 64],
+#                     ["ViT-L-14", "datacomp_xl_s13b_b90k", 64],
+#                 ]:
+#                     param = model + [head_version, data_aug, fb, warm_up_steps]
+#                     params.append(param)
 
-random.shuffle(params)
+# random.shuffle(params)
 
-print(f"Total experiments {len(params)}")
-for param in params[:50]:
-    print("Params:", param)
-    train(*param)
+# print(f"Total experiments {len(params)}")
+# for param in params[:50]:
+#     print("Params:", param)
+#     train(*param)
+
+
+train("ViT-L-14", "datacomp_xl_s13b_b90k", 64, 4, "hca", False, 1000)
