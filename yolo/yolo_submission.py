@@ -5,10 +5,10 @@ import pandas as pd
 from ultralytics import YOLO
 import torch as th
 
-yolo_model = 'runs/detect/train/weights/best.pt'
-test_dir = '../data/test'
+yolo_model = "runs/detect/train_m/weights/best.pt"
+test_dir = "../../data/test"
 
-test_df = pd.read_csv('../data/test_phase1_v2.csv')
+test_df = pd.read_csv("../../data/test_phase1_v2.csv")
 
 
 labels = [
@@ -26,17 +26,16 @@ with th.no_grad():
     model = YOLO(yolo_model)
 
     for i in range(len(test_df)):
-
         f_name, img_w, img_h = test_df.iloc[i]
         results = model(os.path.join(test_dir, f_name))
 
         bbox = [0, 0, img_w, img_h]
-        label = 'albopictus'
+        label = "albopictus"
         conf = 0.0
 
         for result in results:
             _bbox = [0, 0, img_w, img_h]
-            _label = 'albopictus'
+            _label = "albopictus"
             _conf = 0.0
 
             bboxes_tmp = result.boxes.xyxy.tolist()
@@ -54,19 +53,21 @@ with th.no_grad():
                 label = _label
                 conf = _conf
 
-        rows.append({
-            'img_fName': f_name,
-            'img_w': img_w, 
-            'img_h': img_h,
-            'bbx_xtl': int(bbox[0]),
-            'bbx_ytl': int(bbox[1]),
-            'bbx_xbr': int(bbox[2]),
-            'bbx_ybr': int(bbox[3]),
-            'class_label': label
-        })
-        
+        rows.append(
+            {
+                "img_fName": f_name,
+                "img_w": img_w,
+                "img_h": img_h,
+                "bbx_xtl": int(bbox[0]),
+                "bbx_ytl": int(bbox[1]),
+                "bbx_xbr": int(bbox[2]),
+                "bbx_ybr": int(bbox[3]),
+                "class_label": label,
+            }
+        )
 
-with open('submissions_yolo_s.csv', 'w') as f:
+
+with open("submissions_yolo_m.csv", "w") as f:
     writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
     writer.writeheader()
     writer.writerows(rows)

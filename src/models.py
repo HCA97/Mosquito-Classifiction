@@ -3,12 +3,65 @@ from torch import nn
 import open_clip
 
 
+class HeadV1(nn.Module):
+    def __init__(self, f_out: int, f_in: int):
+        super().__init__()
+
+        self.label = nn.Sequential(
+            nn.BatchNorm1d(f_in),
+            nn.Dropout1d(),
+            nn.LeakyReLU(),
+            nn.Linear(f_in, f_out),
+        )
+
+    def forward(self, x):
+        x = th.squeeze(x)
+        return self.label(x)
+
+
+class HeadV2(nn.Module):
+    def __init__(self, f_out: int, f_in: int):
+        super().__init__()
+
+        self.label = nn.Sequential(
+            nn.BatchNorm1d(f_in),
+            nn.Linear(f_in, f_out),
+        )
+
+    def forward(self, x):
+        x = th.squeeze(x)
+        return self.label(x)
+
+
+class HeadV3(nn.Module):
+    def __init__(self, f_out: int, f_in: int):
+        super().__init__()
+
+        self.label = nn.Sequential(
+            nn.BatchNorm1d(f_in),
+            nn.Linear(f_in, f_in, bias=False),
+            nn.BatchNorm1d(f_in),
+            nn.LeakyReLU(),
+            nn.Dropout1d(),
+            nn.Linear(f_in, f_in, bias=False),
+            nn.BatchNorm1d(f_in),
+            nn.LeakyReLU(),
+            nn.Dropout1d(),
+            nn.Linear(f_in, f_out),
+        )
+
+    def forward(self, x):
+        x = th.squeeze(x)
+        return self.label(x)
+
+
 class CLIPClassifier(nn.Module):
     def __init__(
         self,
         n_classes: int = 6,
         model_name: str = "ViT-L-14",
         data: str = "datacomp_xl_s13b_b90k",
+        head_version: int = 1,
     ):
         super().__init__()
         self.backbone = open_clip.create_model_and_transforms(
@@ -42,11 +95,12 @@ class CLIPClassifier(nn.Module):
         else:
             raise ValueError
 
-        self.label = nn.Sequential(
-            nn.Dropout1d(),
-            nn.LeakyReLU(),
-            nn.Linear(self.n, n_classes),
-        )
+        if head_version == 2:
+            self.label = HeadV2(n_classes, self.n)
+        elif head_version == 3:
+            self.label = HeadV3(n_classes, self.n)
+        else:
+            self.label = HeadV1(n_classes, self.n)
 
         self.n_classes = n_classes
 

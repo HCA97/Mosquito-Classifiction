@@ -1,9 +1,12 @@
+from typing import List
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 import torch as th
 from torch import nn
 import pytorch_lightning as pl
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torcheval.metrics.functional import multiclass_f1_score
+from torcheval.metrics.functional import multiclass_f1_score, multiclass_accuracy
+from transformers import get_linear_schedule_with_warmup
+
 from .models import CLIPClassifier
 
 
@@ -21,13 +24,26 @@ class MosquitoClassifier(pl.LightningModule):
         n_classes: int = 6,
         model_name: str = "ViT-L-14",
         dataset: str = "datacomp_xl_s13b_b90k",
+        freeze_backbones: bool = False,
+        head_version: int = 0,
+        warm_up_steps: int = 2000,
+        bs: int = 64,
+        data_aug: str = "",
     ):
         super().__init__()
         self.save_hyperparameters()
 
-        self.cls = CLIPClassifier(n_classes, model_name, dataset)
+        self.cls = CLIPClassifier(n_classes, model_name, dataset, head_version)
+        if freeze_backbones:
+            self.freezebackbone()
+
         self.scheduler = None
         self.n_classes = n_classes
+        self.warm_up_steps = warm_up_steps
+
+    def freezebackbone(self) -> None:
+        for param in self.cls.backbone.parameters():
+            param.requires_grad = False
 
     def forward(self, x: th.Tensor) -> th.Tensor:
         return self.cls(x)
@@ -38,8 +54,10 @@ class MosquitoClassifier(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = th.optim.AdamW(self.cls.get_learnable_params())
-        self.scheduler = ReduceLROnPlateau(
-            optimizer, "min", patience=2, factor=0.1, verbose=True
+        self.scheduler = get_linear_schedule_with_warmup(
+            optimizer,
+            num_warmup_steps=self.warm_up_steps,
+            num_training_steps=12800,  # not sure what to set
         )
         return optimizer
 
@@ -58,11 +76,21 @@ class MosquitoClassifier(pl.LightningModule):
                     label_p,
                     label_t.argmax(dim=1),
                     num_classes=self.n_classes,
+                    average="macro",
+                ),
+                "train_multiclass_accuracy": multiclass_accuracy(
+                    label_p,
+                    label_t.argmax(dim=1),
+                    num_classes=self.n_classes,
+                    average="macro",
                 ),
                 "train_accuracy": accuracy(label_t, label_p),
                 "train_loss": label_loss,
             }
         )
+
+        if self.scheduler is not None:
+            self.scheduler.step()
 
         return label_loss
 
@@ -81,6 +109,13 @@ class MosquitoClassifier(pl.LightningModule):
                     label_p,
                     label_t.argmax(dim=1),
                     num_classes=self.n_classes,
+                    average="macro",
+                ),
+                "val_multiclass_accuracy": multiclass_accuracy(
+                    label_p,
+                    label_t.argmax(dim=1),
+                    num_classes=self.n_classes,
+                    average="macro",
                 ),
                 "val_accuracy": accuracy(label_t, label_p),
                 "val_loss": label_loss,
@@ -88,11 +123,6 @@ class MosquitoClassifier(pl.LightningModule):
         )
 
     def on_epoch_end(self):
-        if self.scheduler is not None:
-            metrics = self.trainer.callback_metrics
-            val_loss = metrics.get("val_loss")
-            self.scheduler.step(val_loss)
-
         opt = self.optimizers(use_pl_optimizer=True)
         self.log("lr", opt.param_groups[0]["lr"])
 

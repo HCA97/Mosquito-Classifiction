@@ -47,6 +47,42 @@ def aug(data_aug: str = "image_net") -> T.Compose:
             ]
         )
 
+    elif data_aug == "hca":
+        aug8p3 = A.OneOf(
+            [
+                A.Sharpen(p=0.3),
+                A.ToGray(p=0.3),
+                A.CLAHE(p=0.3),
+            ],
+            p=0.5,
+        )
+
+        blur = A.OneOf(
+            [
+                A.GaussianBlur(p=0.3),
+                A.MotionBlur(p=0.3),
+            ],
+            p=0.5,
+        )
+
+        transform = A.Compose(
+            [
+                A.ShiftScaleRotate(
+                    rotate_limit=45,
+                    scale_limit=0.1,
+                    border_mode=cv2.BORDER_REFLECT,
+                    interpolation=cv2.INTER_CUBIC,
+                    p=0.5,
+                ),
+                A.Resize(224, 224, cv2.INTER_CUBIC),
+                aug8p3,
+                blur,
+                A.HorizontalFlip(p=0.5),
+                A.VerticalFlip(p=0.5),
+                A.ElasticTransform(p=0.5),
+                A.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
+            ]
+        )
     elif data_aug == "aug_mix":
         transform = T.Compose(
             [
@@ -93,7 +129,7 @@ def aug(data_aug: str = "image_net") -> T.Compose:
                     shift_limit=0.2,
                     scale_limit=0.2,
                     rotate_limit=10,
-                    border_mode=0,
+                    border_mode=cv2.BORDER_REFLECT,
                     p=0.7,
                 ),
                 A.Resize(224, 224, cv2.INTER_CUBIC),
