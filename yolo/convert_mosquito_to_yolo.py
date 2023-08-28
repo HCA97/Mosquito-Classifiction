@@ -7,8 +7,8 @@ import pandas as pd
 from tqdm import tqdm
 
 
-img_dir = "../../data/train"
-annotation_csv = "../../data/train.csv"
+img_dir = "../../data_round_2/final"
+annotation_csv = "../../data_round_2/phase2_train_v0.csv"
 class_dict = {
     "albopictus": 0,
     "culex": 1,
@@ -85,8 +85,8 @@ if __name__ == "__main__":
 
     config = {
         "path": output_dir,
-        "train": "./../images/train",
-        "val": "./../images/val",
+        "train": "./images/train",
+        "val": "./images/val",
         "test": "",
         "names": dict((v, k) for k, v in class_dict.items()),
     }

@@ -5,7 +5,7 @@ names:
   3: culiseta
   4: anopheles
   5: aegypti
-path: /home/cemmi/Documents/aicrowd-mos/data_yolo
+path: ../../data_yolo
 test: 
-train: images/train
-val: images/val
+train: ./images/train
+val: ./images/val

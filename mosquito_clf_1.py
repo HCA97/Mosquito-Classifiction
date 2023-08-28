@@ -142,4 +142,5 @@ def train(
 #     train(*param)
 
 
-train("ViT-L-14", "datacomp_xl_s13b_b90k", 64, 4, "hca", False, 1000)
+train("ViT-L-14", "datacomp_xl_s13b_b90k", 64, 5, "hca", False, 1000)
+train("ViT-L-14", "datacomp_xl_s13b_b90k", 64, 6, "hca", False, 1000)
