@@ -5,6 +5,6 @@ names:
   3: culiseta
   4: anopheles
   5: aegypti
-path: ../../data_yolo
+path: ../../data_yolo_balance
 train: ./images/train
 val: ./images/val

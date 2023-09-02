@@ -2,6 +2,7 @@ import os
 import shutil
 from concurrent.futures import ThreadPoolExecutor
 import yaml
+import sys
 
 import pandas as pd
 from tqdm import tqdm
@@ -20,6 +21,23 @@ class_dict = {
 
 
 output_dir = "../../data_yolo"
+yaml_file = "yolo_config_mos.yml"
+
+
+def class_balancing(df: pd.DataFrame) -> pd.DataFrame:
+    counts = df.class_label.value_counts().to_dict()
+    max_label = max(list(counts.items()), key=lambda x: x[1])
+
+    for key, value in counts.items():
+        if key == max_label[0]:
+            continue
+
+        df_label = df[df.class_label == key].sample(
+            n=max_label[1] - value, replace=True
+        )
+        df = pd.concat([df, df_label])
+
+    return df
 
 
 def convert_2_yolo_boxxes(img_shape: tuple, bbox: tuple) -> tuple:
@@ -75,11 +93,17 @@ def create_yolo_folder(df: pd.DataFrame, folder_name: str, start_index: int = 0)
 if __name__ == "__main__":
     df = pd.read_csv(annotation_csv)
 
-    create_folders(output_dir)
-
     train_df = df.sample(frac=0.8, random_state=200)
     val_df = df.drop(train_df.index)
 
+    # not yet
+    if sys.argv[1] == "balance":
+        print("balance dataset")
+        train_df = class_balancing(train_df)
+        output_dir += "_balance"
+        yaml_file = "yolo_config_mos_balance.yml"
+
+    create_folders(output_dir)
     create_yolo_folder(train_df, "train")
     create_yolo_folder(val_df, "val", len(train_df))
 
@@ -87,9 +111,8 @@ if __name__ == "__main__":
         "path": output_dir,
         "train": "./images/train",
         "val": "./images/val",
-        "test": "",
         "names": dict((v, k) for k, v in class_dict.items()),
     }
 
-    with open("yolo_config_mos.yml", "w") as outfile:
+    with open(yaml_file, "w") as outfile:
         yaml.dump(config, outfile, default_flow_style=False)

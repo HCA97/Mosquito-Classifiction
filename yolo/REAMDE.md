@@ -8,6 +8,6 @@ sparseml.ultralytics.train \
   --model "zoo:cv/detection/yolov8-m/pytorch/ultralytics/voc/pruned75-none" \
   --recipe "zoo:cv/detection/yolov8-m/pytorch/ultralytics/voc/pruned75-none" \
   --data yolo_config_mos.yml \
-  --batch 64 \
+  --batch 32 \
   --patience 0
 ```

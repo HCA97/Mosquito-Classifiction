@@ -1,7 +1,7 @@
 jupyter
 numpy
 opencv-python
-torch==1.13.1
+torch==2.0.1
 torchvision
 open-clip-torch
 transformers
@@ -11,16 +11,13 @@ pytorch-lightning
 lightning[extra]
 tensorboard-pytorch
 tensorboard
-ultralytics
+ultralytics==8.0.163
 albumentations
-faiss-cpu
-lpips
-pytorch-fid
 black
 torcheval
-# deepsparse[yolov8]
+onnx>=1.12.0
+onnxsim>=0.4.33
 onnxruntime
-onnxconverter-common
-onnx
-sparseml
-sparseml[torch,torchvision]
+onnxconverter-common==1.14.0
+openvino-dev>=2023.0
+ncnn

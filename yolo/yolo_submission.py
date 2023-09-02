@@ -67,7 +67,7 @@ with th.no_grad():
         )
 
 
-with open("submissions_yolo_m.csv", "w") as f:
+with open("submissions/submissions_yolo_m.csv", "w") as f:
     writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
     writer.writeheader()
     writer.writerows(rows)
