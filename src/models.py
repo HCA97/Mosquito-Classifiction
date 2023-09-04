@@ -15,7 +15,6 @@ class HeadV1(nn.Module):
         )
 
     def forward(self, x):
-        x = th.squeeze(x)
         return self.label(x)
 
 
@@ -30,7 +29,6 @@ class HeadV4(nn.Module):
         )
 
     def forward(self, x):
-        x = th.squeeze(x)
         return self.label(x)
 
 
@@ -45,7 +43,6 @@ class HeadV5(nn.Module):
         )
 
     def forward(self, x):
-        x = th.squeeze(x)
         return self.label(x)
 
 
@@ -60,7 +57,6 @@ class HeadV6(nn.Module):
         )
 
     def forward(self, x):
-        x = th.squeeze(x)
         return self.label(x)
 
 
@@ -74,7 +70,6 @@ class HeadV2(nn.Module):
         )
 
     def forward(self, x):
-        x = th.squeeze(x)
         return self.label(x)
 
 
@@ -96,7 +91,6 @@ class HeadV3(nn.Module):
         )
 
     def forward(self, x):
-        x = th.squeeze(x)
         return self.label(x)
 
 
@@ -157,7 +151,6 @@ class CLIPClassifier(nn.Module):
 
     def forward(self, x: th.tensor) -> th.tensor:
         x = self.backbone(x)
-        x = th.squeeze(x)
         return self.label(x)
 
     def get_parameter_section(self, parameters, lr=None, wd=None):

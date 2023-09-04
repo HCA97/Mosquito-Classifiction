@@ -14,6 +14,10 @@ tensorboard
 ultralytics==8.0.163
 albumentations
 black
+wandb
+tensorflow-cpu==2.13.0
+protobuf>=3.20.3
+typing-extensions<4.6.0
 torcheval
 onnx>=1.12.0
 onnxsim>=0.4.33
@@ -21,3 +25,5 @@ onnxruntime
 onnxconverter-common==1.14.0
 openvino-dev>=2023.0
 ncnn
+triton
+bitsandbytes==0.41.1
