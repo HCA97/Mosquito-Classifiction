@@ -1,17 +1,18 @@
 import os
-import shutil
 from concurrent.futures import ThreadPoolExecutor
 
 import cv2
 import pandas as pd
 from tqdm import tqdm
 
-
-img_dir = '../data/train'
-annotation_csv = '../data/train.csv'
+from src.data_loader import class_balancing
 
 
-output_dir = '../data_funit'
+img_dir = "../data_round_2/final"
+annotation_csv = "../data_round_2/phase2_train_v0.csv"
+
+
+output_dir = "../data_funit"
 
 labels = [
     "albopictus",
@@ -22,34 +23,39 @@ labels = [
     "aegypti",
 ]
 
+
 def create_folders(output_dir: str):
     os.makedirs(output_dir, exist_ok=True)
-    os.makedirs(os.path.join(output_dir, 'train'), exist_ok=True)
-    os.makedirs(os.path.join(output_dir, 'val'), exist_ok=True)
+    os.makedirs(os.path.join(output_dir, "train"), exist_ok=True)
+    os.makedirs(os.path.join(output_dir, "val"), exist_ok=True)
 
 
 def create_funit_folder(df: pd.DataFrame, folder_name: str) -> list:
     def _loop(f_name: str, label: str, bbox: tuple) -> str:
-        global img_dir, output_dir
+        try:
+            global img_dir, output_dir
 
-        _label = label.replace('/', '_')
+            _label = label.replace("/", "_")
 
-        src_path = os.path.join(img_dir, f_name)
-        
-        dst_folder = os.path.join(output_dir, folder_name, _label)
-        os.makedirs(dst_folder, exist_ok=True)
-        dst_path = os.path.join(dst_folder, f_name)
+            src_path = os.path.join(img_dir, f_name)
 
-        # load image
-        img = cv2.imread(src_path)
-        
-        # crop mosquito x: colums, y: rows
-        img = img[bbox[1]:bbox[3], bbox[0]:bbox[2]]
+            dst_folder = os.path.join(output_dir, folder_name, _label)
+            os.makedirs(dst_folder, exist_ok=True)
+            dst_path = os.path.join(dst_folder, f_name)
 
-        # save destination
-        cv2.imwrite(dst_path, img)
+            # load image
+            img = cv2.imread(src_path)
 
-        return os.path.join(_label, f_name)
+            # crop mosquito x: colums, y: rows
+            img = img[bbox[1] : bbox[3], bbox[0] : bbox[2]]
+
+            # save destination
+            cv2.imwrite(dst_path, img)
+
+            return os.path.join(_label, f_name)
+        except Exception as e:
+            print("Error: ", e)
+            return ""
 
     res = []
     with ThreadPoolExecutor(10) as exe:
@@ -63,10 +69,9 @@ def create_funit_folder(df: pd.DataFrame, folder_name: str) -> list:
         res = [job.result() for job in tqdm(jobs)]
 
     return res
-            
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     df = pd.read_csv(annotation_csv)
 
     create_folders(output_dir)
@@ -74,15 +79,14 @@ if __name__ == '__main__':
     train_df = df.sample(frac=0.8, random_state=200)
     val_df = df.drop(train_df.index)
 
-    res_train = create_funit_folder(train_df, 'train')
-    with open('mosquitos_list_train.txt', 'w') as f:
+    res_train = create_funit_folder(class_balancing(train_df), "train")
+    with open("mosquitos_list_train.txt", "w") as f:
         for line in res_train:
-            f.write(f'{line}\n')
+            if line:
+                f.write(f"{line}\n")
 
-    res_val = create_funit_folder(val_df, 'val')
-    with open('mosquitos_list_val.txt', 'w') as f:
+    res_val = create_funit_folder(val_df, "val")
+    with open("mosquitos_list_val.txt", "w") as f:
         for line in res_val:
-            f.write(f'{line}\n')
-
-        
-        
+            if line:
+                f.write(f"{line}\n")

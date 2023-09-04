@@ -10,6 +10,35 @@ from transformers import get_linear_schedule_with_warmup
 from .models import CLIPClassifier
 
 
+def f1(y_true: th.Tensor, y_pred: th.Tensor):
+    y_pred = th.round(y_pred)
+    tp = th.sum((y_true * y_pred).float(), dim=0)
+    tn = th.sum(((1 - y_true) * (1 - y_pred)).float(), dim=0)
+    fp = th.sum(((1 - y_true) * y_pred).float(), dim=0)
+    fn = th.sum((y_true * (1 - y_pred)).float(), dim=0)
+
+    p = tp / (tp + fp + 1e-7)
+    r = tp / (tp + fn + 1e-7)
+
+    f1 = 2 * p * r / (p + r + 1e-7)
+    f1 = th.where(th.isnan(f1), th.zeros_like(f1), f1)
+    return th.mean(f1)
+
+
+def f1_loss(y_true: th.Tensor, y_pred: th.Tensor):
+    tp = th.sum((y_true * y_pred).float(), dim=0)
+    tn = th.sum(((1 - y_true) * (1 - y_pred)).float(), dim=0)
+    fp = th.sum(((1 - y_true) * y_pred).float(), dim=0)
+    fn = th.sum((y_true * (1 - y_pred)).float(), dim=0)
+
+    p = tp / (tp + fp + 1e-7)
+    r = tp / (tp + fn + 1e-7)
+
+    f1 = 2 * p * r / (p + r + 1e-7)
+    f1 = th.where(th.isnan(f1), th.zeros_like(f1), f1)
+    return 1 - th.mean(f1)
+
+
 def accuracy(y1: th.Tensor, y2: th.Tensor):
     y1_argmax = y1.argmax(dim=1)
     y2_argmax = y2.argmax(dim=1)
@@ -29,6 +58,7 @@ class MosquitoClassifier(pl.LightningModule):
         warm_up_steps: int = 2000,
         bs: int = 64,
         data_aug: str = "",
+        loss_func: str = "ce",
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -40,6 +70,7 @@ class MosquitoClassifier(pl.LightningModule):
         self.scheduler = None
         self.n_classes = n_classes
         self.warm_up_steps = warm_up_steps
+        self.loss_func = loss_func
 
     def freezebackbone(self) -> None:
         for param in self.cls.backbone.parameters():
@@ -68,7 +99,10 @@ class MosquitoClassifier(pl.LightningModule):
         )
 
         label_p = self.cls(img)
-        label_loss = nn.CrossEntropyLoss()(label_p, label_t)
+        if self.loss_func == "f1":
+            label_loss = f1_loss(label_t, th.nn.functional.softmax(label_p, dim=1))
+        else:
+            label_loss = nn.CrossEntropyLoss()(label_p, label_t)
 
         self.log_dict(
             {
@@ -101,7 +135,10 @@ class MosquitoClassifier(pl.LightningModule):
         )
 
         label_p = self.cls(img)
-        label_loss = nn.CrossEntropyLoss()(label_p, label_t)
+        if self.loss_func == "f1":
+            label_loss = f1_loss(label_t, th.nn.functional.softmax(label_p, dim=1))
+        else:
+            label_loss = nn.CrossEntropyLoss()(label_p, label_t)
 
         self.log_dict(
             {
@@ -134,4 +171,6 @@ if __name__ == "__main__":
 
         y2 = th.tensor([[0, 0, 0, 1], [0, 2, 0, 0], [0, 2, 0, 0], [1, 0, 0, 0]])
 
-        print(accuracy(y1, y2), 0.5)
+        print(f1_loss(y1, y2), 0.5)
+
+    test_accuracy()

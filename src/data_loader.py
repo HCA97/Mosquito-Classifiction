@@ -190,7 +190,7 @@ def read_image_cv2(f_name: str, gray_scale: bool = False) -> np.ndarray:
     return img
 
 
-def class_balancing(df: pd.DataFrame) -> list:
+def class_balancing(df: pd.DataFrame) -> pd.DataFrame:
     counts = df.class_label.value_counts().to_dict()
     max_label = max(list(counts.items()), key=lambda x: x[1])
 
@@ -234,7 +234,9 @@ class SimpleClassificationDataset(Dataset):
         f_name, _, _, x_tl, y_tl, x_br, y_br, label = self.df.iloc[idx]
 
         img = read_image_cv2(os.path.join(self.img_dir, f_name))
-        img = img[y_tl:y_br, x_tl:x_br, :]
+        img_ = img[y_tl:y_br, x_tl:x_br, :]
+        if img_.shape[0] * img_.shape[1] != 0:
+            img = img_
 
         if self.data_augment:
             if isinstance(self.data_augment, A.Compose):
