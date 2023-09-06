@@ -11,8 +11,8 @@ import pandas as pd
 import src.classification as lc
 import src.data_loader as dl
 
-img_dir = "../data/train"
-annotations_csv = "../data/train.csv"
+img_dir = "../data_round_2/final"
+annotations_csv = "../data_round_2/phase2_train_v0.csv"
 class_dict = {
     "albopictus": th.tensor([1, 0, 0, 0, 0, 0], dtype=th.float),
     "culex": th.tensor([0, 1, 0, 0, 0, 0], dtype=th.float),
@@ -142,5 +142,5 @@ def train(
 #     train(*param)
 
 
-train("ViT-L-14", "datacomp_xl_s13b_b90k", 64, 5, "hca", False, 1000)
-train("ViT-L-14", "datacomp_xl_s13b_b90k", 64, 6, "hca", False, 1000)
+# train("ViT-L-14", "datacomp_xl_s13b_b90k", 64, 5, "hca", False, 1000)
+train("ViT-L-14", "datacomp_xl_s13b_b90k", 64, 4, "hca", False, 1000)

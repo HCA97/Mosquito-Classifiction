@@ -14,11 +14,18 @@ tensorboard
 ultralytics==8.0.163
 albumentations
 black
+torcheval
+# not needed
 wandb
+# for gans
+albumentations
+faiss-cpu
+lpips
+pytorch-fid
+# yolo exports
 tensorflow-cpu==2.13.0
 protobuf>=3.20.3
 typing-extensions<4.6.0
-torcheval
 onnx>=1.12.0
 onnxsim>=0.4.33
 onnxruntime
