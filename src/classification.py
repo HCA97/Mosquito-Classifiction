@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, Optional, Tuple
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 import torch as th
 from torch import nn
@@ -59,6 +59,7 @@ class MosquitoClassifier(pl.LightningModule):
         bs: int = 64,
         data_aug: str = "",
         loss_func: str = "ce",
+        epochs: int = 5,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -71,6 +72,12 @@ class MosquitoClassifier(pl.LightningModule):
         self.n_classes = n_classes
         self.warm_up_steps = warm_up_steps
         self.loss_func = loss_func
+
+        self.val_labels_t = []
+        self.val_labels_p = []
+
+        self.train_labels_t = []
+        self.train_labels_p = []
 
     def freezebackbone(self) -> None:
         for param in self.cls.backbone.parameters():
@@ -92,6 +99,18 @@ class MosquitoClassifier(pl.LightningModule):
         )
         return optimizer
 
+    def compute_loss(self, label_t: th.Tensor, label_p: th.Tensor) -> th.Tensor:
+        if self.loss_func == "f1":
+            label_loss = f1_loss(label_t, th.nn.functional.softmax(label_p, dim=1))
+        elif self.loss_func == "ce+f1":
+            label_loss = f1_loss(
+                label_t, th.nn.functional.softmax(label_p, dim=1)
+            ) + nn.CrossEntropyLoss()(label_p, label_t)
+        else:
+            label_loss = nn.CrossEntropyLoss()(label_p, label_t)
+
+        return label_loss
+
     def training_step(self, train_batch, batch_idx) -> STEP_OUTPUT:
         img, label_t = (
             train_batch["img"],
@@ -99,10 +118,21 @@ class MosquitoClassifier(pl.LightningModule):
         )
 
         label_p = self.cls(img)
-        if self.loss_func == "f1":
-            label_loss = f1_loss(label_t, th.nn.functional.softmax(label_p, dim=1))
-        else:
-            label_loss = nn.CrossEntropyLoss()(label_p, label_t)
+        label_loss = self.compute_loss(label_t, label_p)
+
+        self.train_labels_t.append(label_t.detach().cpu())
+        self.train_labels_p.append(label_p.detach().cpu())
+
+        self.log("train_loss", label_loss)
+
+        if self.scheduler is not None:
+            self.scheduler.step()
+
+        return label_loss
+
+    def on_train_epoch_end(self) -> None:
+        label_p = th.concatenate(self.train_labels_p)
+        label_t = th.concatenate(self.train_labels_t)
 
         self.log_dict(
             {
@@ -119,26 +149,31 @@ class MosquitoClassifier(pl.LightningModule):
                     average="macro",
                 ),
                 "train_accuracy": accuracy(label_t, label_p),
-                "train_loss": label_loss,
             }
         )
 
-        if self.scheduler is not None:
-            self.scheduler.step()
+        self.train_labels_t = []
+        self.train_labels_p = []
 
-        return label_loss
-
-    def validation_step(self, val_batch, batch_idx):
+    def validation_step(self, val_batch, batch_idx) -> STEP_OUTPUT:
         img, label_t = (
             val_batch["img"],
             val_batch["label"],
         )
 
         label_p = self.cls(img)
-        if self.loss_func == "f1":
-            label_loss = f1_loss(label_t, th.nn.functional.softmax(label_p, dim=1))
-        else:
-            label_loss = nn.CrossEntropyLoss()(label_p, label_t)
+        label_loss = self.compute_loss(label_t, label_p)
+
+        self.val_labels_t.append(label_t.detach().cpu())
+        self.val_labels_p.append(label_p.detach().cpu())
+
+        self.log("val_loss", label_loss)
+
+        return label_loss
+
+    def on_validation_epoch_end(self):
+        label_p = th.concatenate(self.val_labels_p)
+        label_t = th.concatenate(self.val_labels_t)
 
         self.log_dict(
             {
@@ -155,9 +190,11 @@ class MosquitoClassifier(pl.LightningModule):
                     average="macro",
                 ),
                 "val_accuracy": accuracy(label_t, label_p),
-                "val_loss": label_loss,
             }
         )
+
+        self.val_labels_t = []
+        self.val_labels_p = []
 
     def on_epoch_end(self):
         opt = self.optimizers(use_pl_optimizer=True)

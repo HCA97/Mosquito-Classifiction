@@ -6,6 +6,7 @@ import sys
 
 import pandas as pd
 from tqdm import tqdm
+from sklearn.model_selection import train_test_split
 
 
 img_dir = "../../data_round_2/final"
@@ -91,10 +92,13 @@ def create_yolo_folder(df: pd.DataFrame, folder_name: str, start_index: int = 0)
 
 
 if __name__ == "__main__":
-    df = pd.read_csv(annotation_csv)
-
-    train_df = df.sample(frac=0.8, random_state=200)
-    val_df = df.drop(train_df.index)
+    annotations_df = pd.read_csv(annotation_csv)
+    train_df, val_df = train_test_split(
+        annotations_df,
+        test_size=0.2,
+        stratify=annotations_df["class_label"],
+        random_state=200,
+    )
 
     # not yet
     if sys.argv[1] == "balance":
