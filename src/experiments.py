@@ -151,7 +151,7 @@ class ExperimentMosquitoClassifier:
         create_callbacks: Callable[[], List[Callback]] = _default_callbacks,
     ):
         annotations_df = pd.read_csv(self.annotations_csv)
-        skf = StratifiedKFold(n_splits=n_splits)
+        skf = StratifiedKFold(n_splits=n_splits, random_state=200)
 
         for _, (train_index, val_index) in enumerate(
             skf.split(annotations_df, annotations_df.class_label)
