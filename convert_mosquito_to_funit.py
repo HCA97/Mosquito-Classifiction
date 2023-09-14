@@ -12,7 +12,7 @@ img_dir = "../data_round_2/final"
 annotation_csv = "../data_round_2/phase2_train_v0.csv"
 
 
-output_dir = "../data_funit"
+output_dir = "../data_funit_round_2"
 
 labels = [
     "albopictus",
@@ -76,17 +76,18 @@ if __name__ == "__main__":
 
     create_folders(output_dir)
 
-    train_df = df.sample(frac=0.8, random_state=200)
-    val_df = df.drop(train_df.index)
+    # train_df = df.sample(frac=0.8, random_state=200)
+    # val_df = df.drop(train_df.index)
 
-    res_train = create_funit_folder(class_balancing(train_df), "train")
+    # train_df = class_balancing(train_df)
+    res_train = create_funit_folder(df, "train")
     with open("mosquitos_list_train.txt", "w") as f:
         for line in res_train:
             if line:
                 f.write(f"{line}\n")
 
-    res_val = create_funit_folder(val_df, "val")
-    with open("mosquitos_list_val.txt", "w") as f:
-        for line in res_val:
-            if line:
-                f.write(f"{line}\n")
+    # res_val = create_funit_folder(val_df, "val")
+    # with open("mosquitos_list_val.txt", "w") as f:
+    #     for line in res_val:
+    #         if line:
+    #             f.write(f"{line}\n")

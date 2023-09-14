@@ -3,7 +3,7 @@ import random
 from src.experiments import ExperimentMosquitoClassifier
 
 img_dir = "../data_round_2/final"
-annotations_csv = "../data_round_2/val_data.csv"
+annotations_csv = "../data_round_2/phase2_train_v0.csv"
 
 
 exp = ExperimentMosquitoClassifier(img_dir, annotations_csv)
@@ -31,21 +31,21 @@ for data_aug in ["image_net", "happy_whale", "hca"]:
                     param = model + [head_version, data_aug, fb, warm_up_steps]
                     params.append(param)
 
-random.shuffle(params)
+# random.shuffle(params)
 
-print(f"Total experiments {len(params)}")
-for param in params[:50]:
-    print("Params:", param)
-    exp.run(*param)
+# print(f"Total experiments {len(params)}")
+# for param in params[:50]:
+#     print("Params:", param)
+#     exp.run(*param)
 
 
 # train("ViT-L-14", "datacomp_xl_s13b_b90k", 64, 5, "hca", False, 1000)
 
 
 # Test
+exp.run("ViT-B-16", "datacomp_l_s1b_b8k", 64, 2, "hca", False, 1000, epochs=5)
 # exp.run("ViT-B-16", "datacomp_l_s1b_b8k", 64, 2, "hca", False, 1000, epochs=1)
-# exp.run("ViT-B-16", "datacomp_l_s1b_b8k", 64, 2, "hca", False, 1000, epochs=1)
-# from pytorch_lightning.callbacks import ModelCheckpoint, Callback
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 # exp.run_cross_validation(
 #     "ViT-B-16",
@@ -55,8 +55,8 @@ for param in params[:50]:
 #     "hca",
 #     False,
 #     1000,
-#     epochs=1,
-#     n_splits=2,
+#     epochs=5,
+#     n_splits=5,
 #     create_callbacks=lambda: [
 #         ModelCheckpoint(
 #             monitor="val_f1_score",

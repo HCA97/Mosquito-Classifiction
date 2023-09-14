@@ -1,25 +1,22 @@
 import os
-from multiprocessing import Pool
 
 import cv2
 import pandas as pd
 from tqdm import tqdm
 
 size = (256, 256)
-img_dir = "../data/train"
-annotation_csv = "../data/train.csv"
+img_dir = "../data_round_2/final"
+annotation_csv = "../data_round_2/phase2_train_v0.csv"
+output_dir = "../data_style_gan_2"
+labels = ["anopheles"]
 
 
-output_dir = "../data_style_gan"
-
-
-def create_folders(output_dir: str):
-    os.makedirs(output_dir, exist_ok=True)
-    os.makedirs(os.path.join(output_dir, "train"), exist_ok=True)
-    os.makedirs(os.path.join(output_dir, "val"), exist_ok=True)
+os.makedirs(output_dir, exist_ok=True)
 
 
 def create_style_gan_folder(df: pd.DataFrame, folder_name: str) -> list:
+    global labels
+
     def _loop(f_name: str, bbox: tuple) -> str:
         global img_dir, output_dir, size
 
@@ -42,17 +39,17 @@ def create_style_gan_folder(df: pd.DataFrame, folder_name: str) -> list:
         del img, img_res
 
     for i in tqdm(range(len(df))):
-        f_name, _, _, x_tl, y_tl, x_br, y_br, _ = df.iloc[i]
-        _loop(f_name, (x_tl, y_tl, x_br, y_br))
+        f_name, _, _, x_tl, y_tl, x_br, y_br, label = df.iloc[i]
+        if label in labels:
+            _loop(f_name, (x_tl, y_tl, x_br, y_br))
 
 
 if __name__ == "__main__":
     df = pd.read_csv(annotation_csv)
 
-    create_folders(output_dir)
+    # train_df = df.sample(frac=0.8, random_state=200)
+    # val_df = df.drop(train_df.index)
+    train_df = df
 
-    train_df = df.sample(frac=0.8, random_state=200)
-    val_df = df.drop(train_df.index)
-
-    create_style_gan_folder(train_df, "train")
-    create_style_gan_folder(val_df, "val")
+    create_style_gan_folder(train_df, "anopheles")
+    # create_style_gan_folder(val_df, "val")
