@@ -101,6 +101,8 @@ class CLIPClassifier(nn.Module):
         model_name: str = "ViT-L-14",
         data: str = "datacomp_xl_s13b_b90k",
         head_version: int = 1,
+        hd_lr: float = None,
+        hd_wd: float = None,
     ):
         super().__init__()
         self.backbone = open_clip.create_model_and_transforms(
@@ -112,24 +114,24 @@ class CLIPClassifier(nn.Module):
             self.lrs = dict(
                 back_lrs={"8": 1.25e-6, "16": 2.5e-6, "20": 5e-6, "24": 10e-6},
                 back_wd=1e-3,
-                hd_lr=3e-4,
-                hd_wd=1e-5,
+                hd_lr=3e-4 or hd_lr,
+                hd_wd=1e-5 or hd_wd,
             )
         elif model_name == "ViT-H-14":
             self.n = 1024
             self.lrs = {
                 "back_lrs": {"10": 1.25e-6, "20": 2.5e-6, "26": 5e-6, "32": 10e-6},
                 "back_wd": 1e-3,
-                "hd_lr": 3e-4,
-                "hd_wd": 1e-5,
+                "hd_lr": 3e-4 or hd_lr,
+                "hd_wd": 1e-5 or hd_wd,
             }
         elif model_name == "ViT-B-16":
             self.n = 512
             self.lrs = {
                 "back_lrs": {"1": 2.5e-6, "7": 5e-6, "12": 10e-6},
                 "back_wd": 1e-3,
-                "hd_lr": 3e-4,
-                "hd_wd": 1e-5,
+                "hd_lr": 3e-4 or hd_lr,
+                "hd_wd": 1e-5 or hd_wd,
             }
         else:
             raise ValueError

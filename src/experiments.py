@@ -113,6 +113,7 @@ class ExperimentMosquitoClassifier:
 
         th.set_float32_matmul_precision("high")
         model = lc.MosquitoClassifier(
+            n_classes=len(self.class_dict),
             model_name=model_name,
             dataset=dataset,
             freeze_backbones=freeze_backbones,
@@ -165,6 +166,7 @@ class ExperimentMosquitoClassifier:
 
             th.set_float32_matmul_precision("high")
             model = lc.MosquitoClassifier(
+                n_classes=len(self.class_dict),
                 model_name=model_name,
                 dataset=dataset,
                 freeze_backbones=freeze_backbones,

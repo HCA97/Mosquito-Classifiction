@@ -60,11 +60,15 @@ class MosquitoClassifier(pl.LightningModule):
         data_aug: str = "",
         loss_func: str = "ce",
         epochs: int = 5,
+        hd_lr: float = 3e-4,
+        hd_wd: float = 1e-5,
     ):
         super().__init__()
         self.save_hyperparameters()
 
-        self.cls = CLIPClassifier(n_classes, model_name, dataset, head_version)
+        self.cls = CLIPClassifier(
+            n_classes, model_name, dataset, head_version, hd_lr, hd_wd
+        )
         if freeze_backbones:
             self.freezebackbone()
 
