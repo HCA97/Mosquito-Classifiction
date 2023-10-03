@@ -18,7 +18,6 @@ torcheval
 # not needed
 wandb
 # for gans
-albumentations
 faiss-cpu
 lpips
 pytorch-fid
@@ -38,3 +37,5 @@ bitsandbytes==0.41.1
 diffusers
 accelerate
 super-image
+# arcface
+pytorch-metric-learning

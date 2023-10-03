@@ -90,7 +90,7 @@ def upsample_edsr(img_dir: str, save_dir: str):
             print(f"Saved image to {save_path}...")
 
 
-img_dir = "../Mosquito-on-human-skin/Aedes aegypti smashed"
-save_dir = "../Mosquito-on-human-skin/Aedes_aegypti_smashed_compvis_x4"
+img_dir = "../Mosquito-on-human-skin/Aedes aegypti landing"
+save_dir = "../Mosquito-on-human-skin/Aedes_aegypti_landing_compvis_x4"
 
 upsample_folder_stabilityai(img_dir, save_dir)
