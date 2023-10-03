@@ -94,6 +94,33 @@ class HeadV3(nn.Module):
         return self.label(x)
 
 
+class HeadV8(nn.Module):
+    def __init__(self, f_out: int, f_in: int):
+        super().__init__()
+
+        self.label = nn.Sequential(
+            nn.Dropout1d(),
+            nn.Linear(f_in, f_out),
+        )
+
+    def forward(self, x):
+        return self.label(x)
+
+
+class HeadV7(nn.Module):
+    def __init__(self, f_out: int, f_in: int):
+        super().__init__()
+
+        self.label = nn.Sequential(
+            nn.LayerNorm(f_in),
+            nn.Dropout1d(),
+            nn.Linear(f_in, f_out),
+        )
+
+    def forward(self, x):
+        return self.label(x)
+
+
 class CLIPClassifier(nn.Module):
     def __init__(
         self,
@@ -105,6 +132,7 @@ class CLIPClassifier(nn.Module):
         hd_wd: float = None,
     ):
         super().__init__()
+
         self.backbone = open_clip.create_model_and_transforms(
             model_name, pretrained=data
         )[0].visual
@@ -146,6 +174,10 @@ class CLIPClassifier(nn.Module):
             self.label = HeadV5(n_classes, self.n)
         elif head_version == 6:
             self.label = HeadV6(n_classes, self.n)
+        elif head_version == 7:
+            self.label = HeadV7(n_classes, self.n)
+        elif head_version == 8:
+            self.label = HeadV8(n_classes, self.n)
         else:
             self.label = HeadV1(n_classes, self.n)
 

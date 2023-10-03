@@ -60,6 +60,7 @@ class MosquitoClassifier(pl.LightningModule):
         data_aug: str = "",
         loss_func: str = "ce",
         epochs: int = 5,
+        label_smoothing: float = 0.0,
         hd_lr: float = 3e-4,
         hd_wd: float = 1e-5,
     ):
@@ -76,6 +77,7 @@ class MosquitoClassifier(pl.LightningModule):
         self.n_classes = n_classes
         self.warm_up_steps = warm_up_steps
         self.loss_func = loss_func
+        self.label_smoothing = label_smoothing
 
         self.val_labels_t = []
         self.val_labels_p = []
@@ -111,7 +113,9 @@ class MosquitoClassifier(pl.LightningModule):
                 label_t, th.nn.functional.softmax(label_p, dim=1)
             ) + nn.CrossEntropyLoss()(label_p, label_t)
         else:
-            label_loss = nn.CrossEntropyLoss()(label_p, label_t)
+            label_loss = nn.CrossEntropyLoss(label_smoothing=self.label_smoothing)(
+                label_p, label_t
+            )
 
         return label_loss
 

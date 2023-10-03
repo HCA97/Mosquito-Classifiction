@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 
 
 img_dir = "../../data_round_2/final"
-annotation_csv = "../../data_round_2/phase2_train_v0.csv"
+annotation_csv = "../../data_round_2/phase2_train_v0_cleaned.csv"
 
 class_dict = {"genus": 1, "species": 0}
 
@@ -56,31 +56,38 @@ def create_folders(output_dir: str):
 
 
 def create_yolo_folder(df: pd.DataFrame, folder_name: str, start_index: int = 0):
-    def _loop(i: int):
+    def _loop(i: int, rows: pd.DataFrame):
         nonlocal folder_name, df, start_index
         global img_dir, output_dir
 
-        f_name, w, h, x_tl, y_tl, x_br, y_br, label = df.iloc[i]
+        label_path = os.path.join(
+            output_dir, "labels", folder_name, f"{i + start_index}.txt"
+        )
+
+        with open(label_path, "w") as f:
+            for j in range(len(rows)):
+                f_name, w, h, x_tl, y_tl, x_br, y_br, label = rows.iloc[j]
+                bbox = convert_2_yolo_boxxes((w, h), (x_tl, y_tl, x_br, y_br))
+
+                _label = 1 if label.lower() in ["anopheles", "culex", "culiseta"] else 0
+
+                if j == (len(rows) - 1):
+                    f.write(f"{_label} {bbox[0]} {bbox[1]} {bbox[2]} {bbox[3]}")
+                else:
+                    f.write(f"{_label} {bbox[0]} {bbox[1]} {bbox[2]} {bbox[3]}\n")
+
         src_path = os.path.join(img_dir, f_name)
         dst_path = os.path.join(
             output_dir, "images", folder_name, f"{i + start_index}.jpeg"
         )
         shutil.copy(src_path, dst_path)
 
-        bbox = convert_2_yolo_boxxes((w, h), (x_tl, y_tl, x_br, y_br))
-
-        label_path = os.path.join(
-            output_dir, "labels", folder_name, f"{i + start_index}.txt"
-        )
-
-        _label = 1 if label.lower() in ["anopheles", "culex", "culiseta"] else 0
-        with open(label_path, "w") as f:
-            f.write(f"{_label} {bbox[0]} {bbox[1]} {bbox[2]} {bbox[3]}")
-
+    df_groupped = df.groupby("img_fName", group_keys=True).apply(lambda x: x)
     with ThreadPoolExecutor(10) as exe:
         jobs = []
-        for i in range(len(df)):
-            jobs.append(exe.submit(_loop, i))
+        for i, img_fName in enumerate(set(df_groupped["img_fName"])):
+            rows = df_groupped[df_groupped.img_fName == img_fName]
+            jobs.append(exe.submit(_loop, i, rows))
 
         for job in tqdm(jobs):
             job.result()

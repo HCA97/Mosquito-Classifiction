@@ -97,6 +97,7 @@ class ExperimentMosquitoClassifier:
         freeze_backbones: bool = False,
         warm_up_steps: int = 2000,
         epochs: int = 5,
+        label_smoothing: float = 0.0,
         create_callbacks: Callable[[], List[Callback]] = _default_callbacks,
     ):
         annotations_df = pd.read_csv(self.annotations_csv)
@@ -122,6 +123,7 @@ class ExperimentMosquitoClassifier:
             bs=bs,
             data_aug=data_aug,
             epochs=epochs,
+            label_smoothing=label_smoothing,
         )
         trainer = pl.Trainer(
             accelerator="gpu",
