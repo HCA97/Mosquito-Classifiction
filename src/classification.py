@@ -63,6 +63,7 @@ class MosquitoClassifier(pl.LightningModule):
         label_smoothing: float = 0.0,
         hd_lr: float = 3e-4,
         hd_wd: float = 1e-5,
+        img_size: tuple = (224, 224),
     ):
         super().__init__()
         self.save_hyperparameters()

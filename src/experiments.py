@@ -1,4 +1,4 @@
-from typing import List, Dict, Callable
+from typing import List, Dict, Callable, Tuple
 
 import torch as th
 import pytorch_lightning as pl
@@ -18,7 +18,8 @@ def _default_callbacks() -> List[Callback]:
             monitor="val_f1_score",
             mode="max",
             save_top_k=2,
-            save_last=True,
+            save_last=False,
+            save_weights_only=True,
             filename="{epoch}-{val_loss}-{val_f1_score}-{val_multiclass_accuracy}",
         ),
     ]
@@ -52,6 +53,7 @@ class ExperimentMosquitoClassifier:
         model_name: str,
         data_aug: str,
         bs: int,
+        img_size: Tuple[int, int] = (224, 224),
     ) -> List[DataLoader]:
         transform = dl.pre_process(model_name)
 
@@ -60,7 +62,7 @@ class ExperimentMosquitoClassifier:
             self.img_dir,
             self.class_dict,
             transform,
-            dl.aug(data_aug),
+            dl.aug(data_aug, img_size),
         )
         train_dataloader = DataLoader(
             train_dataset,
@@ -75,7 +77,7 @@ class ExperimentMosquitoClassifier:
             self.img_dir,
             self.class_dict,
             transform,
-            dl.aug("resize"),
+            dl.aug("resize", img_size),
             class_balance=False,
         )
         val_dataloader = DataLoader(
@@ -98,6 +100,7 @@ class ExperimentMosquitoClassifier:
         warm_up_steps: int = 2000,
         epochs: int = 5,
         label_smoothing: float = 0.0,
+        img_size: Tuple[int, int] = (224, 224),
         create_callbacks: Callable[[], List[Callback]] = _default_callbacks,
     ):
         annotations_df = pd.read_csv(self.annotations_csv)
@@ -109,7 +112,7 @@ class ExperimentMosquitoClassifier:
         )
 
         train_dataloader, val_dataloader = self.get_dataloaders(
-            train_df, val_df, model_name, data_aug, bs
+            train_df, val_df, model_name, data_aug, bs, img_size
         )
 
         th.set_float32_matmul_precision("high")
@@ -124,6 +127,7 @@ class ExperimentMosquitoClassifier:
             data_aug=data_aug,
             epochs=epochs,
             label_smoothing=label_smoothing,
+            img_size=img_size,
         )
         trainer = pl.Trainer(
             accelerator="gpu",

@@ -1,6 +1,5 @@
 import os
-import logging
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 
 import torch as th
 from torch.utils.data import Dataset
@@ -11,7 +10,7 @@ import torchvision.transforms as T
 import albumentations as A
 
 
-def pre_process(_: str) -> T.Compose:
+def pre_process(_: str = "ViT") -> T.Compose:
     return T.Compose(
         [
             T.ToTensor(),
@@ -23,12 +22,14 @@ def pre_process(_: str) -> T.Compose:
     )
 
 
-def aug(data_aug: str = "image_net") -> T.Compose:
+def aug(
+    data_aug: str = "image_net", img_size: Tuple[int, int] = (224, 224)
+) -> T.Compose:
     transform = T.Compose(
         [
             T.ToPILImage(),
             T.Resize(
-                size=(224, 224),
+                size=img_size,
                 interpolation=T.InterpolationMode.BICUBIC,
                 antialias=True,
             ),
@@ -40,7 +41,7 @@ def aug(data_aug: str = "image_net") -> T.Compose:
                 T.ToPILImage(),
                 T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
                 T.Resize(
-                    size=(224, 224),
+                    size=img_size,
                     interpolation=T.InterpolationMode.BICUBIC,
                     antialias=True,
                 ),
@@ -74,7 +75,7 @@ def aug(data_aug: str = "image_net") -> T.Compose:
                     interpolation=cv2.INTER_CUBIC,
                     p=0.5,
                 ),
-                A.Resize(224, 224, cv2.INTER_CUBIC),
+                A.Resize(*img_size, cv2.INTER_CUBIC),
                 aug8p3,
                 blur,
                 A.HorizontalFlip(p=0.5),
@@ -89,7 +90,7 @@ def aug(data_aug: str = "image_net") -> T.Compose:
                 T.ToPILImage(),
                 T.AugMix(),
                 T.Resize(
-                    size=(224, 224),
+                    size=img_size,
                     interpolation=T.InterpolationMode.BICUBIC,
                     antialias=True,
                 ),
@@ -113,7 +114,7 @@ def aug(data_aug: str = "image_net") -> T.Compose:
                     border_mode=cv2.BORDER_REFLECT,
                     p=0.5,
                 ),
-                A.Resize(224, 224, cv2.INTER_CUBIC),
+                A.Resize(*img_size, cv2.INTER_CUBIC),
                 aug8p3,
                 A.HorizontalFlip(p=0.5),
                 A.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
@@ -132,10 +133,10 @@ def aug(data_aug: str = "image_net") -> T.Compose:
                     border_mode=cv2.BORDER_REFLECT,
                     p=0.7,
                 ),
-                A.Resize(224, 224, cv2.INTER_CUBIC),
+                A.Resize(*img_size, cv2.INTER_CUBIC),
                 A.Cutout(
-                    max_h_size=int(224 * 0.4),
-                    max_w_size=int(224 * 0.4),
+                    max_h_size=int(img_size[0] * 0.4),
+                    max_w_size=int(img_size[1] * 0.4),
                     num_holes=1,
                     p=0.5,
                 ),
@@ -146,14 +147,14 @@ def aug(data_aug: str = "image_net") -> T.Compose:
             [
                 T.ToPILImage(),
                 T.RandomResizedCrop(
-                    size=(224, 224),
+                    size=img_size,
                     scale=(0.9, 1.0),
                     ratio=(0.75, 1.3333),
                     interpolation=T.InterpolationMode.BICUBIC,
                     antialias=True,
                 ),
                 T.Resize(
-                    size=(224, 224),
+                    size=img_size,
                     interpolation=T.InterpolationMode.BICUBIC,
                     antialias=True,
                 ),
@@ -165,14 +166,14 @@ def aug(data_aug: str = "image_net") -> T.Compose:
                 T.ToPILImage(),
                 T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
                 T.RandomResizedCrop(
-                    size=(224, 224),
+                    size=img_size,
                     scale=(0.9, 1.0),
                     ratio=(0.75, 1.3333),
                     interpolation=T.InterpolationMode.BICUBIC,
                     antialias=True,
                 ),
                 T.Resize(
-                    size=(224, 224),
+                    size=img_size,
                     interpolation=T.InterpolationMode.BICUBIC,
                     antialias=True,
                 ),
