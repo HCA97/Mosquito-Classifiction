@@ -84,8 +84,17 @@ class ConvNeXt(nn.Module):
         drop_path_rate=0.0,
         layer_scale_init_value=1e-6,
         head_init_scale=1.0,
+        hd_lr: float = None,
+        hd_wd: float = None,
     ):
         super().__init__()
+
+        self.lrs = {
+            "back_lrs": {"1": 1.25e-6, "2": 2.5e-6, "3": 5e-6, "4": 10e-6},
+            "back_wd": 1e-3,
+            "hd_lr": 3e-4 or hd_lr,
+            "hd_wd": 1e-5 or hd_wd,
+        }
 
         self.downsample_layers = (
             nn.ModuleList()
@@ -146,6 +155,82 @@ class ConvNeXt(nn.Module):
         x = self.head(x)
         return x
 
+    def get_parameter_section(self, parameters, lr=None, wd=None):
+        # https://github.com/IvanAer/G-Universal-CLIP
+        parameter_settings = []
+
+        lr_is_dict = isinstance(lr, dict)
+        wd_is_dict = isinstance(wd, dict)
+
+        layer_no = None
+        for n, p in parameters:
+            for split in n.split("."):
+                if split.isnumeric():
+                    layer_no = int(split)
+
+            if not layer_no:
+                layer_no = 0
+
+            if lr_is_dict:
+                for k, v in lr.items():
+                    if layer_no < int(k):
+                        temp_lr = v
+                        break
+            else:
+                temp_lr = lr
+
+            if wd_is_dict:
+                for k, v in wd.items():
+                    if layer_no < int(k):
+                        temp_wd = v
+                        break
+            else:
+                temp_wd = wd
+
+            parameter_setting = {"params": p, "lr": temp_lr, "weight_decay": temp_wd}
+            parameter_settings.append(parameter_setting)
+        return parameter_settings
+
+    def get_learnable_params(self) -> list:
+        back_lrs = self.lrs["back_lrs"]
+        back_wd = self.lrs["back_wd"]
+        hd_lr = self.lrs["hd_lr"]
+        hd_wd = self.lrs["hd_wd"]
+
+        parameter_settings = []
+
+        if back_lrs and back_wd:
+            parameter_settings.extend(
+                self.get_parameter_section(
+                    [(n, p) for n, p in self.stages.named_parameters()],
+                    lr=back_lrs,
+                    wd=back_wd,
+                )
+            )
+            parameter_settings.extend(
+                self.get_parameter_section(
+                    [(n, p) for n, p in self.downsample_layers.named_parameters()],
+                    lr=back_lrs,
+                    wd=back_wd,
+                )
+            )
+
+        parameter_settings.extend(
+            self.get_parameter_section(
+                [(n, p) for n, p in self.norm.named_parameters()],
+                lr=hd_lr,
+                wd=hd_wd,
+            )
+        )
+
+        parameter_settings.extend(
+            self.get_parameter_section(
+                [(n, p) for n, p in self.head.named_parameters()], lr=hd_lr, wd=hd_wd
+            )
+        )
+
+        return parameter_settings
+
 
 class LayerNorm(nn.Module):
     r"""LayerNorm that supports two data formats: channels_last (default) or channels_first.
@@ -190,6 +275,18 @@ model_urls = {
 }
 
 
+def load_state_dict_not_working_aaaa(model: ConvNeXt, checkpoint: dict):
+    model_state_dict = model.state_dict()
+    checkpoint_state_dict = checkpoint["model"]
+
+    for key, value in model_state_dict.items():
+        data = checkpoint_state_dict.get(key)
+        if data is not None and data.shape == value.shape:
+            model_state_dict[key].data = data.data
+
+    model.load_state_dict(model_state_dict)
+
+
 # @register_model
 def convnext_base(pretrained=False, in_22k=False, **kwargs):
     model = ConvNeXt(depths=[3, 3, 27, 3], dims=[128, 256, 512, 1024], **kwargs)
@@ -200,7 +297,7 @@ def convnext_base(pretrained=False, in_22k=False, **kwargs):
             else model_urls["convnext_base_1k"]
         )
         checkpoint = torch.hub.load_state_dict_from_url(url=url, map_location="cpu")
-        model.load_state_dict(checkpoint["model"])
+        load_state_dict_not_working_aaaa(model, checkpoint)
     return model
 
 
@@ -214,7 +311,7 @@ def convnext_large(pretrained=False, in_22k=False, **kwargs):
             else model_urls["convnext_large_1k"]
         )
         checkpoint = torch.hub.load_state_dict_from_url(url=url, map_location="cpu")
-        model.load_state_dict(checkpoint["model"])
+        load_state_dict_not_working_aaaa(model, checkpoint)
     return model
 
 
@@ -227,5 +324,31 @@ def convnext_xlarge(pretrained=False, in_22k=False, **kwargs):
         ), "only ImageNet-22K pre-trained ConvNeXt-XL is available; please set in_22k=True"
         url = model_urls["convnext_xlarge_22k"]
         checkpoint = torch.hub.load_state_dict_from_url(url=url, map_location="cpu")
-        model.load_state_dict(checkpoint["model"])
+        # model.load_state_dict(checkpoint["model"], strict=False)
+        load_state_dict_not_working_aaaa(model, checkpoint)
     return model
+
+
+def build_covnext(
+    model_name: str,
+    num_classes: int = 6,
+    hd_lr: float = None,
+    hd_wd: float = None,
+    freeze_backbone: bool = False,
+) -> ConvNeXt:
+    model = None
+    if model_name == "covnext_base":
+        model = convnext_base(True, True, num_classes=num_classes)
+    elif model_name == "covnext_large":
+        model = convnext_large(True, True, num_classes=num_classes)
+    elif model_name == "covnext_xlarge":
+        model = convnext_xlarge(True, True, num_classes=num_classes)
+
+    if model is None:
+        raise ValueError(
+            'Invalid Model name must be "covnext_base", "covnext_large", "covnext_xlarge"'
+        )
+
+
+if __name__ == "__main__":
+    build_covnext("conext_base")

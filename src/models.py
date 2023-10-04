@@ -169,6 +169,14 @@ class CLIPClassifier(nn.Module):
                 "hd_lr": 3e-4 or hd_lr,
                 "hd_wd": 1e-5 or hd_wd,
             }
+        elif model_name == "convnext_xxlarge":
+            self.n = 1024
+            self.lrs = {
+                "back_lrs": {"1": 1.25e-6, "2": 2.5e-6, "3": 5e-6, "4": 10e-6},
+                "back_wd": 1e-3,
+                "hd_lr": 3e-4 or hd_lr,
+                "hd_wd": 1e-5 or hd_wd,
+            }
         else:
             raise ValueError
 

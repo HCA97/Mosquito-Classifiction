@@ -8,6 +8,7 @@ from torcheval.metrics.functional import multiclass_f1_score, multiclass_accurac
 from transformers import get_linear_schedule_with_warmup
 
 from .models import CLIPClassifier
+from .convnext_meta import build_covnext
 
 
 def f1(y_true: th.Tensor, y_pred: th.Tensor):
@@ -68,11 +69,17 @@ class MosquitoClassifier(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        self.cls = CLIPClassifier(
-            n_classes, model_name, dataset, head_version, hd_lr, hd_wd
-        )
-        if freeze_backbones:
-            self.freezebackbone()
+        if dataset == "imagenet":
+            self.cls = build_covnext(
+                model_name, n_classes, hd_lr, hd_wd, freeze_backbones
+            )
+
+        else:
+            self.cls = CLIPClassifier(
+                n_classes, model_name, dataset, head_version, hd_lr, hd_wd
+            )
+            if freeze_backbones:
+                self.freezebackbone()
 
         self.scheduler = None
         self.n_classes = n_classes
