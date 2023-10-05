@@ -94,6 +94,33 @@ class HeadV3(nn.Module):
         return self.label(x)
 
 
+class HeadV8(nn.Module):
+    def __init__(self, f_out: int, f_in: int):
+        super().__init__()
+
+        self.label = nn.Sequential(
+            nn.Dropout1d(),
+            nn.Linear(f_in, f_out),
+        )
+
+    def forward(self, x):
+        return self.label(x)
+
+
+class HeadV7(nn.Module):
+    def __init__(self, f_out: int, f_in: int):
+        super().__init__()
+
+        self.label = nn.Sequential(
+            nn.LayerNorm(f_in),
+            nn.Dropout1d(),
+            nn.Linear(f_in, f_out),
+        )
+
+    def forward(self, x):
+        return self.label(x)
+
+
 class CLIPClassifier(nn.Module):
     def __init__(
         self,
@@ -101,8 +128,11 @@ class CLIPClassifier(nn.Module):
         model_name: str = "ViT-L-14",
         data: str = "datacomp_xl_s13b_b90k",
         head_version: int = 1,
+        hd_lr: float = None,
+        hd_wd: float = None,
     ):
         super().__init__()
+
         self.backbone = open_clip.create_model_and_transforms(
             model_name, pretrained=data
         )[0].visual
@@ -112,24 +142,24 @@ class CLIPClassifier(nn.Module):
             self.lrs = dict(
                 back_lrs={"8": 1.25e-6, "16": 2.5e-6, "20": 5e-6, "24": 10e-6},
                 back_wd=1e-3,
-                hd_lr=3e-4,
-                hd_wd=1e-5,
+                hd_lr=3e-4 or hd_lr,
+                hd_wd=1e-5 or hd_wd,
             )
         elif model_name == "ViT-H-14":
             self.n = 1024
             self.lrs = {
                 "back_lrs": {"10": 1.25e-6, "20": 2.5e-6, "26": 5e-6, "32": 10e-6},
                 "back_wd": 1e-3,
-                "hd_lr": 3e-4,
-                "hd_wd": 1e-5,
+                "hd_lr": 3e-4 or hd_lr,
+                "hd_wd": 1e-5 or hd_wd,
             }
         elif model_name == "ViT-B-16":
             self.n = 512
             self.lrs = {
                 "back_lrs": {"1": 2.5e-6, "7": 5e-6, "12": 10e-6},
                 "back_wd": 1e-3,
-                "hd_lr": 3e-4,
-                "hd_wd": 1e-5,
+                "hd_lr": 3e-4 or hd_lr,
+                "hd_wd": 1e-5 or hd_wd,
             }
         else:
             raise ValueError
@@ -144,6 +174,10 @@ class CLIPClassifier(nn.Module):
             self.label = HeadV5(n_classes, self.n)
         elif head_version == 6:
             self.label = HeadV6(n_classes, self.n)
+        elif head_version == 7:
+            self.label = HeadV7(n_classes, self.n)
+        elif head_version == 8:
+            self.label = HeadV8(n_classes, self.n)
         else:
             self.label = HeadV1(n_classes, self.n)
 
