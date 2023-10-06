@@ -8,15 +8,20 @@ import numpy as np
 import cv2
 import torchvision.transforms as T
 import albumentations as A
+from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 
-def pre_process(_: str = "ViT") -> T.Compose:
+def pre_process(dataset: str = "laion") -> T.Compose:
     return T.Compose(
         [
             T.ToTensor(),
             T.Normalize(
-                mean=(0.48145466, 0.4578275, 0.40821073),
-                std=(0.26862954, 0.26130258, 0.27577711),
+                mean=(0.48145466, 0.4578275, 0.40821073)
+                if dataset.startswith("laion")
+                else IMAGENET_DEFAULT_MEAN,
+                std=(0.26862954, 0.26130258, 0.27577711)
+                if dataset.startswith("laion")
+                else IMAGENET_DEFAULT_STD,
             ),
         ]
     )

@@ -1,9 +1,7 @@
-from typing import Any, Optional, Tuple
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 import torch as th
 from torch import nn
 import pytorch_lightning as pl
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torcheval.metrics.functional import multiclass_f1_score, multiclass_accuracy
 from transformers import get_linear_schedule_with_warmup
 
@@ -79,7 +77,8 @@ class MosquitoClassifier(pl.LightningModule):
                 n_classes, model_name, dataset, head_version, hd_lr, hd_wd
             )
             if freeze_backbones:
-                self.freezebackbone()
+                for param in self.cls.backbone.parameters():
+                    param.requires_grad = False
 
         self.scheduler = None
         self.n_classes = n_classes
@@ -92,10 +91,6 @@ class MosquitoClassifier(pl.LightningModule):
 
         self.train_labels_t = []
         self.train_labels_p = []
-
-    def freezebackbone(self) -> None:
-        for param in self.cls.backbone.parameters():
-            param.requires_grad = False
 
     def forward(self, x: th.Tensor) -> th.Tensor:
         return self.cls(x)

@@ -50,12 +50,12 @@ class ExperimentMosquitoClassifier:
         self,
         train_df: pd.DataFrame,
         val_df: pd.DataFrame,
-        model_name: str,
+        dataset_name: str,
         data_aug: str,
         bs: int,
         img_size: Tuple[int, int] = (224, 224),
     ) -> List[DataLoader]:
-        transform = dl.pre_process(model_name)
+        transform = dl.pre_process(dataset_name)
 
         train_dataset = dl.SimpleClassificationDataset(
             train_df,
@@ -112,7 +112,7 @@ class ExperimentMosquitoClassifier:
         )
 
         train_dataloader, val_dataloader = self.get_dataloaders(
-            train_df, val_df, model_name, data_aug, bs, img_size
+            train_df, val_df, dataset, data_aug, bs, img_size
         )
 
         th.set_float32_matmul_precision("high")

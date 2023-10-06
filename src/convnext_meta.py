@@ -338,16 +338,30 @@ def build_covnext(
 ) -> ConvNeXt:
     model = None
     if model_name == "covnext_base":
-        model = convnext_base(True, True, num_classes=num_classes)
+        model = convnext_base(
+            True, True, num_classes=num_classes, hd_lr=hd_lr, hd_wd=hd_wd
+        )
     elif model_name == "covnext_large":
-        model = convnext_large(True, True, num_classes=num_classes)
+        model = convnext_large(
+            True, True, num_classes=num_classes, hd_lr=hd_lr, hd_wd=hd_wd
+        )
     elif model_name == "covnext_xlarge":
-        model = convnext_xlarge(True, True, num_classes=num_classes)
+        model = convnext_xlarge(
+            True, True, num_classes=num_classes, hd_lr=hd_lr, hd_wd=hd_wd
+        )
 
     if model is None:
         raise ValueError(
             'Invalid Model name must be "covnext_base", "covnext_large", "covnext_xlarge"'
         )
+
+    if freeze_backbone:
+        for param in model.stages.parameters():
+            param.requires_grad = False
+        for param in model.downsample_layers.parameters():
+            param.requires_grad = False
+
+    return model
 
 
 if __name__ == "__main__":
