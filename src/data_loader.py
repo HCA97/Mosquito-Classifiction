@@ -17,10 +17,10 @@ def pre_process(dataset: str = "laion") -> T.Compose:
             T.ToTensor(),
             T.Normalize(
                 mean=(0.48145466, 0.4578275, 0.40821073)
-                if dataset.startswith("laion")
+                if dataset != "imagenet"
                 else IMAGENET_DEFAULT_MEAN,
                 std=(0.26862954, 0.26130258, 0.27577711)
-                if dataset.startswith("laion")
+                if dataset != "imagenet"
                 else IMAGENET_DEFAULT_STD,
             ),
         ]
