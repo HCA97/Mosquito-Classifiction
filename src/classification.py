@@ -1,13 +1,12 @@
-from typing import Any, Optional, Tuple
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 import torch as th
 from torch import nn
 import pytorch_lightning as pl
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torcheval.metrics.functional import multiclass_f1_score, multiclass_accuracy
 from transformers import get_linear_schedule_with_warmup
 
 from .models import CLIPClassifier
+from .convnext_meta import build_covnext
 
 
 def f1(y_true: th.Tensor, y_pred: th.Tensor):
@@ -63,15 +62,23 @@ class MosquitoClassifier(pl.LightningModule):
         label_smoothing: float = 0.0,
         hd_lr: float = 3e-4,
         hd_wd: float = 1e-5,
+        img_size: tuple = (224, 224),
     ):
         super().__init__()
         self.save_hyperparameters()
 
-        self.cls = CLIPClassifier(
-            n_classes, model_name, dataset, head_version, hd_lr, hd_wd
-        )
-        if freeze_backbones:
-            self.freezebackbone()
+        if dataset == "imagenet":
+            self.cls = build_covnext(
+                model_name, n_classes, hd_lr, hd_wd, freeze_backbones
+            )
+
+        else:
+            self.cls = CLIPClassifier(
+                n_classes, model_name, dataset, head_version, hd_lr, hd_wd
+            )
+            if freeze_backbones:
+                for param in self.cls.backbone.parameters():
+                    param.requires_grad = False
 
         self.scheduler = None
         self.n_classes = n_classes
@@ -84,10 +91,6 @@ class MosquitoClassifier(pl.LightningModule):
 
         self.train_labels_t = []
         self.train_labels_p = []
-
-    def freezebackbone(self) -> None:
-        for param in self.cls.backbone.parameters():
-            param.requires_grad = False
 
     def forward(self, x: th.Tensor) -> th.Tensor:
         return self.cls(x)

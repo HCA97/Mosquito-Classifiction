@@ -37,6 +37,7 @@ for epoch in [20]:
                 1000,
                 epoch,
                 0.0,
+                (224, 224),
                 callbacks,
             ]
             params.append(param)

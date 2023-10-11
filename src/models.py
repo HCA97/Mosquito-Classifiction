@@ -134,7 +134,7 @@ class CLIPClassifier(nn.Module):
         super().__init__()
 
         self.backbone = open_clip.create_model_and_transforms(
-            model_name, pretrained=data
+            model_name.split(".")[0], pretrained=data
         )[0].visual
 
         if model_name == "ViT-L-14":
@@ -157,6 +157,37 @@ class CLIPClassifier(nn.Module):
             self.n = 512
             self.lrs = {
                 "back_lrs": {"1": 2.5e-6, "7": 5e-6, "12": 10e-6},
+                "back_wd": 1e-3,
+                "hd_lr": 3e-4 or hd_lr,
+                "hd_wd": 1e-5 or hd_wd,
+            }
+        elif model_name in [
+            "convnext_large_d",
+            "convnext_large_d_320",
+        ]:
+            self.n = 768
+            self.lrs = {
+                "back_lrs": {"1": 1.25e-6, "2": 2.5e-6, "3": 5e-6, "4": 10e-6},
+                "back_wd": 1e-3,
+                "hd_lr": 3e-4 or hd_lr,
+                "hd_wd": 1e-5 or hd_wd,
+            }
+        elif model_name in [
+            "convnext_large_d.trunk",
+            "convnext_large_d_320.trunk",
+        ]:
+            self.backbone = self.backbone.trunk
+            self.n = 1536
+            self.lrs = {
+                "back_lrs": {"1": 1.25e-6, "2": 2.5e-6, "3": 5e-6, "4": 10e-6},
+                "back_wd": 1e-3,
+                "hd_lr": 3e-4 or hd_lr,
+                "hd_wd": 1e-5 or hd_wd,
+            }
+        elif model_name == "convnext_xxlarge":
+            self.n = 1024
+            self.lrs = {
+                "back_lrs": {"1": 1.25e-6, "2": 2.5e-6, "3": 5e-6, "4": 10e-6},
                 "back_wd": 1e-3,
                 "hd_lr": 3e-4 or hd_lr,
                 "hd_wd": 1e-5 or hd_wd,
