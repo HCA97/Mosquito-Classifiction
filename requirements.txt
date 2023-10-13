@@ -39,3 +39,4 @@ accelerate
 super-image
 # arcface
 pytorch-metric-learning
+torch-ema

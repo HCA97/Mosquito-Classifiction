@@ -1,5 +1,6 @@
 import os
 from typing import Optional, Union, Tuple
+import random
 
 import torch as th
 from torch.utils.data import Dataset
@@ -221,6 +222,7 @@ class SimpleClassificationDataset(Dataset):
         transform: Optional[T.Compose] = None,
         data_augment: Optional[Union[T.Compose, A.Compose]] = None,
         class_balance: bool = True,
+        shift_box: bool = False,
     ):
         self.df = annotations_df
         if class_balance:
@@ -230,6 +232,7 @@ class SimpleClassificationDataset(Dataset):
         self.class_dict = class_dict
         self.transform = transform
         self.data_augment = data_augment
+        self.shift_box = shift_box
 
     def __len__(self):
         return len(self.df)
@@ -237,9 +240,24 @@ class SimpleClassificationDataset(Dataset):
     def __getitem__(self, idx):
         cv2.setNumThreads(6)
 
-        f_name, _, _, x_tl, y_tl, x_br, y_br, label = self.df.iloc[idx]
+        f_name, w, h, x_tl, y_tl, x_br, y_br, label = self.df.iloc[idx]
 
         img = read_image_cv2(os.path.join(self.img_dir, f_name))
+
+        if self.shift_box:
+            _x_tl = min(w, max(0, x_tl + random.randint(-int(0.01 * w), int(0.01 * w))))
+            _x_br = min(w, max(0, x_br + random.randint(-int(0.01 * w), int(0.01 * w))))
+            _y_tl = min(h, max(0, y_tl + random.randint(-int(0.01 * h), int(0.01 * h))))
+            _y_br = min(h, max(0, y_br + random.randint(-int(0.01 * h), int(0.01 * h))))
+
+            if abs(_x_tl - _x_br) > 30 and _x_tl < _x_br:
+                x_tl = _x_tl
+                x_br = _x_br
+
+            if abs(_y_tl - _y_br) > 30 and _y_tl < _y_br:
+                y_br = _y_br
+                y_tl = _y_tl
+
         img_ = img[y_tl:y_br, x_tl:x_br, :]
         if img_.shape[0] * img_.shape[1] != 0:
             img = img_
