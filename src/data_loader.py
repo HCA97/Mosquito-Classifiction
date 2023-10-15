@@ -258,7 +258,7 @@ class SimpleClassificationDataset(Dataset):
                 y_br = _y_br
                 y_tl = _y_tl
 
-        img_ = img[y_tl:y_br, x_tl:x_br, :]
+        img_ = img[int(y_tl) : int(y_br), int(x_tl) : int(x_br), :]
         if img_.shape[0] * img_.shape[1] != 0:
             img = img_
 
