@@ -9,6 +9,7 @@ yolo_path = "./Mosquito-Classifiction/yolo/runs/detect/classic/weights/best.pt"
 img_dir = "./data_round_2/final"
 save_path = "./data_round_2/phase2_train_v0_cleaned_yolo_best_annotations.csv"
 annotations_csv = "./data_round_2/phase2_train_v0_cleaned.csv"
+use_max = True
 
 df = pd.read_csv(annotations_csv)
 
@@ -48,16 +49,14 @@ def detect_images_conf_max(img_path, t_iou=0.5, shrink=5):
             if conf > conf_max:
                 conf_max = conf
                 box_max = [
-                    bbox[0] + shrink,
-                    bbox[1] + shrink,
-                    bbox[2] - shrink,
-                    bbox[3] - shrink,
+                    [
+                        bbox[0] + shrink,
+                        bbox[1] + shrink,
+                        bbox[2] - shrink,
+                        bbox[3] - shrink,
+                    ]
                 ]
-
-    bboxes.append(box_max)
-    confs.append(conf_max)
-
-    return bboxes, confs
+    return box_max
 
 
 df_dict = df.to_dict("records")
@@ -73,7 +72,10 @@ for row in df_dict:
     groupped_dict[row["img_fName"]] = a
 
 for key in tqdm.tqdm(groupped_dict):
-    boxes = detect_images(key)
+    if use_max:
+        boxes = detect_images_conf_max(key)
+    else:
+        boxes = detect_images(key)
 
     if not boxes:
         continue
