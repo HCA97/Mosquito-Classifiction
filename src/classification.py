@@ -94,6 +94,7 @@ class MosquitoClassifier(pl.LightningModule):
         use_ema: bool = False,
         use_same_split_as_yolo: bool = False,
         shift_box: bool = False,
+        max_steps: int = 12400,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -120,6 +121,7 @@ class MosquitoClassifier(pl.LightningModule):
         self.warm_up_steps = warm_up_steps
         self.loss_func = loss_func
         self.label_smoothing = label_smoothing
+        self.max_steps = max_steps
 
         self.val_labels_t = []
         self.val_labels_p = []
@@ -146,7 +148,7 @@ class MosquitoClassifier(pl.LightningModule):
         self.scheduler = get_linear_schedule_with_warmup(
             optimizer,
             num_warmup_steps=self.warm_up_steps,
-            num_training_steps=12800,  # not sure what to set
+            num_training_steps=self.max_steps,  # not sure what to set
         )
         return optimizer
 

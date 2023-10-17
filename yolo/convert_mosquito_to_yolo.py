@@ -25,22 +25,6 @@ output_dir = "../../data_yolo"
 yaml_file = "yolo_config_mos.yml"
 
 
-def class_balancing(df: pd.DataFrame) -> pd.DataFrame:
-    counts = df.class_label.value_counts().to_dict()
-    max_label = max(list(counts.items()), key=lambda x: x[1])
-
-    for key, value in counts.items():
-        if key == max_label[0]:
-            continue
-
-        df_label = df[df.class_label == key].sample(
-            n=max_label[1] - value, replace=True
-        )
-        df = pd.concat([df, df_label])
-
-    return df
-
-
 def convert_2_yolo_boxxes(img_shape: tuple, bbox: tuple) -> tuple:
     img_w, img_h = img_shape
     x_tl, y_tl, x_br, y_br = bbox
@@ -93,19 +77,8 @@ def create_yolo_folder(df: pd.DataFrame, folder_name: str, start_index: int = 0)
 
 if __name__ == "__main__":
     annotations_df = pd.read_csv(annotation_csv)
-    train_df, val_df = train_test_split(
-        annotations_df,
-        test_size=0.2,
-        stratify=annotations_df["class_label"],
-        random_state=200,
-    )
-
-    # not yet
-    if sys.argv[1] == "balance":
-        print("balance dataset")
-        train_df = class_balancing(train_df)
-        output_dir += "_balance"
-        yaml_file = "yolo_config_mos_balance.yml"
+    train_df = annotations_df.sample(frac=0.8, random_state=200)
+    val_df = annotations_df.drop(train_df.index)
 
     create_folders(output_dir)
     create_yolo_folder(train_df, "train")
