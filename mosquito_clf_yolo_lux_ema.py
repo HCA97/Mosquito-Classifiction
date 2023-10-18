@@ -19,7 +19,7 @@ def callbacks() -> List[Callback]:
         ModelCheckpoint(
             monitor="val_f1_score",
             mode="max",
-            save_top_k=1,
+            save_top_k=2,
             save_last=False,
             save_weights_only=True,
             filename="{epoch}-{val_loss}-{val_f1_score}-{val_multiclass_accuracy}",
@@ -31,19 +31,20 @@ def callbacks() -> List[Callback]:
 img_dir = "../data_round_2/final"
 val_annotations_csv = "../data_round_2/best_model_val_data_yolo_annotations.csv"
 train_annotations_csv = "../data_round_2/best_model_train_data_yolo_annotations.csv"
-inat_annotations_csv = "../inaturalist_crawler_data_all_cleaned_sub/inaturalist.csv"
+lux1_annotations_csv = "../gbif-cropped/inaturalist.csv"
+lux2_annotations_csv = "../inaturalist-six-cropped/inaturalist.csv"
+
 
 train_df = pd.read_csv(train_annotations_csv)
-inat_df = pd.read_csv(inat_annotations_csv)
-inat_df = inat_df[inat_df["class_label"] != "culex"]
-inat_df = inat_df[inat_df["class_label"] != "albopictus"]
+lux1_df = pd.read_csv(lux1_annotations_csv)
+lux2_df = pd.read_csv(lux2_annotations_csv)
+
 
 train_df["img_fName"] = "../data_round_2/final/" + train_df["img_fName"]
-inat_df["img_fName"] = (
-    "../inaturalist_crawler_data_all_cleaned_sub/" + inat_df["img_fName"]
-)
+lux1_df["img_fName"] = "../gbif-cropped/" + lux1_df["img_fName"]
+lux2_df["img_fName"] = "../inaturalist-six-cropped/" + lux2_df["img_fName"]
 
-train_df = pd.concat([train_df, inat_df])
+train_df = pd.concat([train_df, lux1_df, lux2_df])
 val_df = pd.read_csv(val_annotations_csv)
 
 model = lc.MosquitoClassifier(
@@ -53,7 +54,8 @@ model = lc.MosquitoClassifier(
     label_smoothing=0.1,
     data_aug="hca",
     epochs=15,
-    max_steps=36000,
+    max_steps=60000,
+    use_ema=True,
 )
 
 
