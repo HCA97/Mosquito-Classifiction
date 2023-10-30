@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 
 
 img_dir = "../../data_round_2/final"
-annotation_csv = "../../data_round_2/phase2_train_v0_cleaned.csv"
+annotation_csv = "../../data_round_2/phase2_train_v0.csv"
 
 class_dict = {"genus": 1, "species": 0}
 

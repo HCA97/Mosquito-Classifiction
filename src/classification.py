@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 import torch as th
 from torch import nn
@@ -46,6 +48,32 @@ def accuracy(y1: th.Tensor, y2: th.Tensor):
     return correct_sum / len(y1)
 
 
+class EMA(nn.Module):
+    """Model Exponential Moving Average V2 from timm"""
+
+    def __init__(self, model: nn.Module, decay: float = 0.9999):
+        super(EMA, self).__init__()
+        # make a copy of the model for accumulating moving average of weights
+        self.module = deepcopy(model)
+        self.module.eval()
+        self.decay = decay
+
+    def _update(self, model: nn.Module, update_fn):
+        with th.no_grad():
+            for ema_v, model_v in zip(
+                self.module.state_dict().values(), model.state_dict().values()
+            ):
+                ema_v.copy_(update_fn(ema_v, model_v))
+
+    def update(self, model):
+        self._update(
+            model, update_fn=lambda e, m: self.decay * e + (1.0 - self.decay) * m
+        )
+
+    def set(self, model):
+        self._update(model, update_fn=lambda e, m: m)
+
+
 class MosquitoClassifier(pl.LightningModule):
     def __init__(
         self,
@@ -63,6 +91,10 @@ class MosquitoClassifier(pl.LightningModule):
         hd_lr: float = 3e-4,
         hd_wd: float = 1e-5,
         img_size: tuple = (224, 224),
+        use_ema: bool = False,
+        use_same_split_as_yolo: bool = False,
+        shift_box: bool = False,
+        max_steps: int = 12400,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -80,11 +112,16 @@ class MosquitoClassifier(pl.LightningModule):
                 for param in self.cls.backbone.parameters():
                     param.requires_grad = False
 
+        self.use_ema = use_ema
+        if self.use_ema:
+            self.ema = EMA(self.cls, decay=0.995)
+
         self.scheduler = None
         self.n_classes = n_classes
         self.warm_up_steps = warm_up_steps
         self.loss_func = loss_func
         self.label_smoothing = label_smoothing
+        self.max_steps = max_steps
 
         self.val_labels_t = []
         self.val_labels_p = []
@@ -92,7 +129,14 @@ class MosquitoClassifier(pl.LightningModule):
         self.train_labels_t = []
         self.train_labels_p = []
 
+    def on_before_backward(self, *args, **kwargs):
+        # ref: https://github.com/Lightning-AI/lightning/issues/10914
+        if self.use_ema:
+            self.ema.update(self.cls)
+
     def forward(self, x: th.Tensor) -> th.Tensor:
+        if self.use_ema and not self.training:
+            return self.ema.module(x)
         return self.cls(x)
 
     def lr_schedulers(self):
@@ -104,7 +148,7 @@ class MosquitoClassifier(pl.LightningModule):
         self.scheduler = get_linear_schedule_with_warmup(
             optimizer,
             num_warmup_steps=self.warm_up_steps,
-            num_training_steps=12800,  # not sure what to set
+            num_training_steps=self.max_steps,  # not sure what to set
         )
         return optimizer
 
@@ -171,8 +215,11 @@ class MosquitoClassifier(pl.LightningModule):
             val_batch["img"],
             val_batch["label"],
         )
+        if self.use_ema:
+            label_p = self.ema.module(img)
+        else:
+            label_p = self.cls(img)
 
-        label_p = self.cls(img)
         label_loss = self.compute_loss(label_t, label_p)
 
         self.val_labels_t.append(label_t.detach().cpu())

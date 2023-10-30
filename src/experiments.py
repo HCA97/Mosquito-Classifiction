@@ -54,6 +54,7 @@ class ExperimentMosquitoClassifier:
         data_aug: str,
         bs: int,
         img_size: Tuple[int, int] = (224, 224),
+        shift_box: bool = False,
     ) -> List[DataLoader]:
         transform = dl.pre_process(dataset_name)
 
@@ -63,6 +64,7 @@ class ExperimentMosquitoClassifier:
             self.class_dict,
             transform,
             dl.aug(data_aug, img_size),
+            shift_box=shift_box,
         )
         train_dataloader = DataLoader(
             train_dataset,
@@ -102,6 +104,9 @@ class ExperimentMosquitoClassifier:
         label_smoothing: float = 0.0,
         img_size: Tuple[int, int] = (224, 224),
         create_callbacks: Callable[[], List[Callback]] = _default_callbacks,
+        use_same_split_as_yolo: bool = False,
+        use_ema: bool = False,
+        shift_box: bool = False,
     ):
         annotations_df = pd.read_csv(self.annotations_csv)
         train_df, val_df = train_test_split(
@@ -110,9 +115,26 @@ class ExperimentMosquitoClassifier:
             stratify=annotations_df["class_label"],
             random_state=200,
         )
+        if use_same_split_as_yolo:
+            df_img_label = annotations_df[
+                ["img_fName", "class_label"]
+            ].drop_duplicates()
+
+            _train_data, _val_data = train_test_split(
+                df_img_label,
+                test_size=0.2,
+                stratify=df_img_label["class_label"],
+                random_state=200,
+            )
+
+            _train_list = list(set(_train_data["img_fName"]))
+            _val_list = list(set(_val_data["img_fName"]))
+
+            train_df = annotations_df[annotations_df["img_fName"].isin(_train_list)]
+            val_df = annotations_df[annotations_df["img_fName"].isin(_val_list)]
 
         train_dataloader, val_dataloader = self.get_dataloaders(
-            train_df, val_df, dataset, data_aug, bs, img_size
+            train_df, val_df, dataset, data_aug, bs, img_size, shift_box
         )
 
         th.set_float32_matmul_precision("high")
@@ -128,6 +150,9 @@ class ExperimentMosquitoClassifier:
             epochs=epochs,
             label_smoothing=label_smoothing,
             img_size=img_size,
+            use_ema=use_ema,
+            use_same_split_as_yolo=use_same_split_as_yolo,
+            shift_box=shift_box,
         )
         trainer = pl.Trainer(
             accelerator="gpu",
@@ -154,11 +179,15 @@ class ExperimentMosquitoClassifier:
         freeze_backbones: bool = False,
         warm_up_steps: int = 2000,
         epochs: int = 5,
-        n_splits: int = 5,
+        label_smoothing: float = 0.0,
+        img_size: Tuple[int, int] = (224, 224),
         create_callbacks: Callable[[], List[Callback]] = _default_callbacks,
+        use_same_split_as_yolo: bool = False,
+        use_ema: bool = False,
+        shift_box: bool = False,
     ):
         annotations_df = pd.read_csv(self.annotations_csv)
-        skf = StratifiedKFold(n_splits=n_splits, random_state=200)
+        skf = StratifiedKFold(n_splits=5, random_state=200)
 
         for _, (train_index, val_index) in enumerate(
             skf.split(annotations_df, annotations_df.class_label)
@@ -167,7 +196,7 @@ class ExperimentMosquitoClassifier:
             val_df = annotations_df.iloc[val_index]
 
             train_dataloader, val_dataloader = self.get_dataloaders(
-                train_df, val_df, model_name, data_aug, bs
+                train_df, val_df, dataset, data_aug, bs, img_size, shift_box
             )
 
             th.set_float32_matmul_precision("high")
@@ -181,6 +210,11 @@ class ExperimentMosquitoClassifier:
                 bs=bs,
                 data_aug=data_aug,
                 epochs=epochs,
+                label_smoothing=label_smoothing,
+                img_size=img_size,
+                use_ema=use_ema,
+                use_same_split_as_yolo=use_same_split_as_yolo,
+                shift_box=shift_box,
             )
             trainer = pl.Trainer(
                 accelerator="gpu",
