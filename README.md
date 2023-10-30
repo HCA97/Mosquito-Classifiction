@@ -28,6 +28,10 @@ This is the 7th place solution for the MosquitoAlert Challenge 2023. The goal of
 4. **Start Training**
    - Execute the command: `python yolo_training.py`.
 
+## Model Weights
+
+You can find the model weights and instructions on how to use them on the [Hugging Face Model Hub](https://huggingface.co/spaces/hca97/Mosquito-Detection).
+
 ## Annotation Files
 
 ### data_round_2
