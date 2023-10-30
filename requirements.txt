@@ -15,6 +15,3 @@ ultralytics==8.0.163
 albumentations
 black
 torcheval
-torch-ema
-# arcface
-pytorch-metric-learning
