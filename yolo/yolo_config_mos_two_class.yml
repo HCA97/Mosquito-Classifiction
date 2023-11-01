@@ -1,6 +1,0 @@
-names:
-  0: species
-  1: genus
-path: ../../data_yolo_two_class
-train: ./images/train
-val: ./images/val

@@ -1,1 +1,0 @@
-https://github.com/ibaiGorordo/ONNX-YOLOv8-Object-Detection/tree/main
